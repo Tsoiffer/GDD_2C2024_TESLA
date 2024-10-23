@@ -61,6 +61,7 @@ GO
 CREATE TABLE TESLA.LOCALIDAD(
     loc_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     loc_nombre VARCHAR(50) NULL,
+	loc_provincia DECIMAL(18,0),
     FOREIGN KEY (loc_provincia) REFERENCES TESLA.PROVINCIA(prov_id)
 );
 GO
@@ -85,6 +86,9 @@ CREATE TABLE TESLA.PRODUCTO(
     prod_codigo VARCHAR(50) NULL,
     prod_descripcion VARCHAR(50) NULL,
     prod_precio DECIMAL(18,0) NULL,
+	prod_marca DECIMAL(18,0),
+	prod_sub_rubro DECIMAL(18,0),
+	prod_modelo DECIMAL(18,0),
     FOREIGN KEY (prod_marca) REFERENCES TESLA.MARCA(marca_id),
     FOREIGN KEY (prod_sub_rubro) REFERENCES TESLA.SUB_RUBRO(sub_rubr_id),
     FOREIGN KEY (prod_modelo) REFERENCES TESLA.MODELO(model_id)
@@ -148,6 +152,8 @@ CREATE TABLE TESLA.DOMICILIO(
     domi_piso DECIMAL(18,0),
     domi_depto  VARCHAR(50),
     domi_cp  VARCHAR(50),
+	domi_usuario DECIMAL(18,0),
+	domi_localidad DECIMAL(18,0),
     FOREIGN KEY (domi_usuario) REFERENCES TESLA.USUARIO(usr_id),
     FOREIGN KEY (domi_localidad) REFERENCES TESLA.LOCALIDAD(loc_id)
 );
@@ -170,6 +176,7 @@ CREATE TABLE TESLA.ALMACEN(
     alm_id  DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     alm_codigo DECIMAL(18,0),
     alm_costo_dia_al DECIMAL(18,0),
+	alm_domicilio DECIMAL(18,0),
     FOREIGN KEY (alm_domicilio) REFERENCES TESLA.DOMICILIO(domi_id)
 );
 GO
@@ -212,7 +219,8 @@ CREATE TABLE TESLA.DETALLE_VENTA(
     det_vent_cantidad DECIMAL(18,0),
     det_precio DECIMAL(18,0),
     det_vent_subtotal DECIMAL(18,0),
-    FOREIGN KEY (det_vent_publicacion) REFERENCES TESLA.PUBLICACION(domi_id)
+	det_vent_publicacion DECIMAL(18,0)
+    FOREIGN KEY (det_vent_publicacion) REFERENCES TESLA.PUBLICACION(publi_id)
 );
 GO
 
@@ -222,8 +230,9 @@ CREATE TABLE TESLA.VENTA(
     vent_codigo DECIMAL(18,0),
     vent_fecha DATETIME,
     vent_total DECIMAL(18,0),
+	vent_cliente DECIMAL(18,0),
+	vent_detalle DECIMAL(18,0),
     FOREIGN KEY (vent_cliente) REFERENCES TESLA.CLIENTE(clien_id),
-    FOREIGN KEY (vent_publicacion) REFERENCES TESLA.PUBLICACION(publi_id),
     FOREIGN KEY (vent_detalle) REFERENCES TESLA.DETALLE_VENTA(det_vent_id)
 );
 GO
