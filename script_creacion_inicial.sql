@@ -38,6 +38,7 @@ GO
 CREATE TABLE TESLA.SUB_RUBRO(
     sub_rubr_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     sub_rubr_descripcion VARCHAR(50) NULL,
+	sub_rubr_rubro DECIMAL(18,0),
     FOREIGN KEY (sub_rubr_rubro) REFERENCES TESLA.RUBRO(rubr_id)
 );
 GO
@@ -237,7 +238,7 @@ CREATE TABLE TESLA.VENTA(
 );
 GO
 
---TABLA XXX
+--TABLA PAGO
 CREATE TABLE TESLA.PAGO(
     pago_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     pago_venta DECIMAL(18,0),
@@ -257,9 +258,12 @@ CREATE TABLE TESLA.ENVIO(
     env_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     env_fecha_programada DATE,
     env_horario_inicio TIME,
-    env_horario_inicio TIME,
+    env_horario_fin TIME,
     env_costo DECIMAL(18,0),
     env_fecha_entrega DATETIME,
+	env_domicilio DECIMAL(18,0),
+	env_tipo DECIMAL(18,0),
+	env_venta DECIMAL(18,0),
     FOREIGN KEY (env_domicilio) REFERENCES TESLA.DOMICILIO(domi_id),
     FOREIGN KEY (env_tipo) REFERENCES TESLA.TIPO_ENVIO(tipo_envio_id),
     FOREIGN KEY (env_venta) REFERENCES TESLA.VENTA(vent_id)
@@ -280,8 +284,21 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- SELECT PARA GUIARSE
+SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO FROM gd_esquema.Maestra
+WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
+--group by PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO
+ORDER BY 2
 
-
+-- MIGRAR RUBRO
+CREATE PROCEDURE TESLA.migrar_rubro AS
+BEGIN
+	INSERT INTO TESLA.RUBRO ()
+	SELECT DISTINCT 
+		
+	FROM 
+END
+GO
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(5)INDEX--------------------------------------------------------------------------------------------------------------------------------------------------
