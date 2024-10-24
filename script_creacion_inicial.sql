@@ -5,7 +5,10 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 --borrado de procedures
 IF OBJECT_ID('TESLA.migrar_rubros', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_rubros
-
+IF OBJECT_ID('TESLA.migrar_marcas', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_marcas
+IF OBJECT_ID('TESLA.migrar_sub_rubros', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_sub_rubros
+IF OBJECT_ID('TESLA.migrar_modelos', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_modelos
+IF OBJECT_ID('TESLA.migrar_provincias', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_provincias
 
 --borrado de tablas
 IF OBJECT_ID('TESLA.ENVIO', 'U') IS NOT NULL DROP TABLE TESLA.ENVIO
@@ -296,9 +299,6 @@ CREATE TABLE TESLA.ENVIO(
 );
 GO
 
-
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(3)CREACION DE FUNCIONES-------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -313,7 +313,7 @@ GO
 SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO FROM gd_esquema.Maestra
 WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
 --group by PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO
-ORDER BY 2
+ORDER BY 1 --hay 815 subrubros distintos
 */
 
 -- MIGRAR RUBRO
@@ -328,7 +328,85 @@ INSERT INTO TESLA.RUBRO(rubr_descripcion) --ponemos los datos que vamos a guarda
 	--sirve para saber si estamos migrando elementos a la nueva tabla
 	DECLARE @cantRubros NVARCHAR(255)
 	SET @cantRubros = (SELECT COUNT(*) FROM TESLA.RUBRO)
-	PRINT('Se agregaron ' + @cantRubros + ' rubros')
+	PRINT('Se agregaron ' + @cantRubros + ' rubros') --deben ser 22
+END
+GO
+
+-- MIGRAR MARCA
+CREATE PROCEDURE TESLA.migrar_marcas
+AS
+BEGIN
+INSERT INTO TESLA.MARCA(marca_descripcion)
+	SELECT DISTINCT PRODUCTO_MARCA
+	FROM gd_esquema.Maestra
+	WHERE PRODUCTO_MARCA IS NOT NULL
+
+	DECLARE @cantMarcas NVARCHAR(255)
+	SET @cantMarcas = (SELECT COUNT(*) FROM TESLA.MARCA)
+	PRINT('Se agregaron ' + @cantMarcas + ' marcas') --deben ser 4
+END
+GO
+
+-- MIGRAR SUB RUBRO
+CREATE PROCEDURE TESLA.migrar_sub_rubros
+AS
+BEGIN
+INSERT INTO TESLA.SUB_RUBRO(sub_rubr_descripcion, sub_rubr_rubro)
+	SELECT DISTINCT PRODUCTO_SUB_RUBRO, rubr_id
+	FROM gd_esquema.Maestra JOIN TESLA.RUBRO ON PRODUCTO_RUBRO_DESCRIPCION = rubr_descripcion
+
+	DECLARE @cantSubRubros NVARCHAR(255)
+	SET @cantSubRubros = (SELECT COUNT(*) FROM TESLA.SUB_RUBRO)
+	PRINT('Se agregaron ' + @cantSubRubros + ' sub rubros') --deben ser 815 
+	/* 
+		si hay SubRubro 1 perteneciente al Rubro X
+		si hay SubRubro 2 perteneciente al Rubro X
+		si hay SubRubro 3 perteneciente al Rubro X
+		si hay SubRubro 1 perteneciente al Rubro Y
+		si hay SubRubro 2 perteneciente al Rubro Y
+		si hay SubRubro 1 perteneciente al Rubro Y
+
+		Hay tres Rubros "X,Y,Z" 
+		Hay seis SubRubros "1,2,3,1,2,1", si bien hay tres subrubros que parecen repetirse ejemplo "1..1.1", pertenecen a rubros distintos, por lo que serian distintos subrubros.  
+	*/
+END
+GO
+
+-- MIGRAR MODELOS
+CREATE PROCEDURE TESLA.migrar_modelos
+AS
+BEGIN
+INSERT INTO TESLA.MODELO(model_codigo, model_descripcion)
+	SELECT DISTINCT PRODUCTO_MOD_CODIGO, PRODUCTO_DESCRIPCION
+	FROM gd_esquema.Maestra
+	WHERE PRODUCTO_MOD_CODIGO IS NOT NULL
+
+	DECLARE @cantModelos NVARCHAR(255)
+	SET @cantModelos = (SELECT COUNT(*) FROM TESLA.MODELO)
+	PRINT('Se agregaron ' + @cantModelos + ' modelos') --deben ser 70
+END
+GO
+
+-- MIGRAR PROVINCIAS
+CREATE PROCEDURE TESLA.migrar_provincias
+AS
+BEGIN
+INSERT INTO TESLA.PROVINCIA(prov_nombre)
+	SELECT DISTINCT VEN_USUARIO_DOMICILIO_PROVINCIA
+	FROM gd_esquema.Maestra
+	WHERE VEN_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+	UNION
+	SELECT DISTINCT ALMACEN_PROVINCIA
+	FROM gd_esquema.Maestra
+	WHERE ALMACEN_PROVINCIA IS NOT NULL
+	UNION
+	SELECT DISTINCT CLI_USUARIO_DOMICILIO_PROVINCIA
+	FROM gd_esquema.Maestra
+	WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+
+	DECLARE @cantprovincias NVARCHAR(255)
+	SET @cantprovincias = (SELECT COUNT(*) FROM TESLA.PROVINCIA)
+	PRINT('Se agregaron ' + @cantprovincias + ' provincias') --deben ser 70
 END
 GO
 
@@ -342,6 +420,10 @@ GO
 BEGIN TRANSACTION
 BEGIN
 	EXECUTE TESLA.migrar_rubros
+	EXECUTE TESLA.migrar_marcas
+	EXECUTE TESLA.migrar_sub_rubros
+	EXECUTE TESLA.migrar_modelos
+	EXECUTE TESLA.migrar_provincias
 
 	PRINT('')
 	PRINT('SE LLENARON TODAS LAS TABLAS :)')
