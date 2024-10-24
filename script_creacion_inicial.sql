@@ -41,6 +41,8 @@ GO
 -- Creación de esquema
 CREATE SCHEMA TESLA;
 GO
+PRINT('SE CREO EL SCHEMA');
+GO
 
 -- Creación de tablas
 --TABLA RUBRO
@@ -342,5 +344,5 @@ BEGIN
 	EXECUTE TESLA.migrar_rubros
 
 	PRINT('')
-	PRINT('SE LLENARON LAS TABLAS :)')
+	PRINT('SE LLENARON TODAS LAS TABLAS :)')
 END 
