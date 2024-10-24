@@ -1,23 +1,46 @@
 USE GD2C2024
 GO
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
------------------------------------------------------(1)ELIMINACION OBJETOS PREVIOS----------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------(1)ELIMINACION ESQUEMA TABLAS PROCEDURES ----------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+--borrado de procedures
+IF OBJECT_ID('TESLA.migrar_rubros', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_rubros
 
 
+--borrado de tablas
+IF OBJECT_ID('TESLA.ENVIO', 'U') IS NOT NULL DROP TABLE TESLA.ENVIO
+IF OBJECT_ID('TESLA.PAGO', 'U') IS NOT NULL DROP TABLE TESLA.PAGO
+IF OBJECT_ID('TESLA.VENTA', 'U') IS NOT NULL DROP TABLE TESLA.VENTA
+IF OBJECT_ID('TESLA.DETALLE_VENTA', 'U') IS NOT NULL DROP TABLE TESLA.DETALLE_VENTA
+IF OBJECT_ID('TESLA.ITEM_FACTURA', 'U') IS NOT NULL DROP TABLE TESLA.ITEM_FACTURA
+IF OBJECT_ID('TESLA.PUBLICACION', 'U') IS NOT NULL DROP TABLE TESLA.PUBLICACION
+IF OBJECT_ID('TESLA.ALMACEN', 'U') IS NOT NULL DROP TABLE TESLA.ALMACEN
+IF OBJECT_ID('TESLA.FACTURA', 'U') IS NOT NULL DROP TABLE TESLA.FACTURA
+IF OBJECT_ID('TESLA.DOMICILIO', 'U') IS NOT NULL DROP TABLE TESLA.DOMICILIO
+IF OBJECT_ID('TESLA.USUARIO', 'U') IS NOT NULL DROP TABLE TESLA.USUARIO
+IF OBJECT_ID('TESLA.VENDEDOR', 'U') IS NOT NULL DROP TABLE TESLA.VENDEDOR
+IF OBJECT_ID('TESLA.CLIENTE', 'U') IS NOT NULL DROP TABLE TESLA.CLIENTE
+IF OBJECT_ID('TESLA.MEDIO_DE_PAGO', 'U') IS NOT NULL DROP TABLE TESLA.MEDIO_DE_PAGO
+IF OBJECT_ID('TESLA.TIPO_MEDIO_DE_PAGO', 'U') IS NOT NULL DROP TABLE TESLA.TIPO_MEDIO_DE_PAGO
+IF OBJECT_ID('TESLA.PRODUCTO', 'U') IS NOT NULL DROP TABLE TESLA.PRODUCTO
+IF OBJECT_ID('TESLA.CONCEPTO_FACTURA', 'U') IS NOT NULL DROP TABLE TESLA.CONCEPTO_FACTURA
+IF OBJECT_ID('TESLA.TIPO_ENVIO', 'U') IS NOT NULL DROP TABLE TESLA.TIPO_ENVIO
+IF OBJECT_ID('TESLA.LOCALIDAD', 'U') IS NOT NULL DROP TABLE TESLA.LOCALIDAD
+IF OBJECT_ID('TESLA.PROVINCIA', 'U') IS NOT NULL DROP TABLE TESLA.PROVINCIA
+IF OBJECT_ID('TESLA.MODELO', 'U') IS NOT NULL DROP TABLE TESLA.MODELO
+IF OBJECT_ID('TESLA.SUB_RUBRO', 'U') IS NOT NULL DROP TABLE TESLA.SUB_RUBRO
+IF OBJECT_ID('TESLA.MARCA', 'U') IS NOT NULL DROP TABLE TESLA.MARCA
+IF OBJECT_ID('TESLA.RUBRO', 'U') IS NOT NULL DROP TABLE TESLA.RUBRO
+
+--borrado de schema
+IF EXISTS (SELECT SCHEMA_NAME FROM INFORMATION_SCHEMA.SCHEMATA WHERE SCHEMA_NAME = 'TESLA') DROP SCHEMA TESLA;
+GO
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------(2)CREACION DE ESQUEMA Y TABLAS------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- Creación de esquema
-
 CREATE SCHEMA TESLA;
 GO
-
-
-
-
 
 -- Creación de tablas
 --TABLA RUBRO
@@ -140,7 +163,7 @@ CREATE TABLE TESLA.USUARIO(
     usr_fecha_creacion DATE,
     usr_vendedor DECIMAL(18,0),
     usr_cliente DECIMAL(18,0),
-    FOREIGN KEY (usr_vendedor) REFERENCES TESLA.VENDEDOR(ven_id),
+    FOREIGN KEY (usr_vendedor) REFERENCES TESLA.VENDEDOR(vend_id),
     FOREIGN KEY (usr_cliente) REFERENCES TESLA.CLIENTE(clien_id) 
 );
 GO
@@ -284,19 +307,26 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- SELECT PARA GUIARSE
+/* SELECT PARA GUIARSE
 SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO FROM gd_esquema.Maestra
 WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
 --group by PRODUCTO_RUBRO_DESCRIPCION, PRODUCTO_SUB_RUBRO
 ORDER BY 2
+*/
 
 -- MIGRAR RUBRO
-CREATE PROCEDURE TESLA.migrar_rubro AS
+CREATE PROCEDURE TESLA.migrar_rubros
+AS
 BEGIN
-	INSERT INTO TESLA.RUBRO ()
-	SELECT DISTINCT 
-		
-	FROM 
+INSERT INTO TESLA.RUBRO(rubr_descripcion) --ponemos los datos que vamos a guardar, menos el pk ya que es autoincremental por el identiti(1,1)
+	SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION
+	FROM gd_esquema.Maestra
+	WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
+
+	--sirve para saber si estamos migrando elementos a la nueva tabla
+	DECLARE @cantRubros NVARCHAR(255)
+	SET @cantRubros = (SELECT COUNT(*) FROM TESLA.RUBRO)
+	PRINT('Se agregaron ' + @cantRubros + ' rubros')
 END
 GO
 
@@ -304,8 +334,13 @@ GO
 -----------------------------------------------------(5)INDEX--------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(6)EXECUTE------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+BEGIN TRANSACTION
+BEGIN
+	EXECUTE TESLA.migrar_rubros
+
+	PRINT('')
+	PRINT('SE LLENARON LAS TABLAS :)')
+END 
