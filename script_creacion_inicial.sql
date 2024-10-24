@@ -41,13 +41,13 @@ GO
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------(2)CREACION DE ESQUEMA Y TABLAS------------------------------------------------------------------------------------------------------------
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
--- CreaciÃ³n de esquema
+-- Creación de esquema
 CREATE SCHEMA TESLA;
 GO
 PRINT('SE CREO EL SCHEMA');
 GO
 
--- CreaciÃ³n de tablas
+-- Creación de tablas
 --TABLA RUBRO
 CREATE TABLE TESLA.RUBRO(
     rubr_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
@@ -324,7 +324,7 @@ INSERT INTO TESLA.RUBRO(rubr_descripcion) --ponemos los datos que vamos a guarda
 	SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION
 	FROM gd_esquema.Maestra
 	WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
-
+	order by 1
 	--sirve para saber si estamos migrando elementos a la nueva tabla
 	DECLARE @cantRubros NVARCHAR(255)
 	SET @cantRubros = (SELECT COUNT(*) FROM TESLA.RUBRO)
@@ -352,8 +352,8 @@ CREATE PROCEDURE TESLA.migrar_sub_rubros
 AS
 BEGIN
 INSERT INTO TESLA.SUB_RUBRO(sub_rubr_descripcion, sub_rubr_rubro)
-	SELECT DISTINCT PRODUCTO_SUB_RUBRO, rubr_id
-	FROM gd_esquema.Maestra JOIN TESLA.RUBRO ON PRODUCTO_RUBRO_DESCRIPCION = rubr_descripcion
+	SELECT DISTINCT PRODUCTO_SUB_RUBRO, R.rubr_id
+	FROM gd_esquema.Maestra JOIN TESLA.RUBRO R ON PRODUCTO_RUBRO_DESCRIPCION = R.rubr_descripcion
 
 	DECLARE @cantSubRubros NVARCHAR(255)
 	SET @cantSubRubros = (SELECT COUNT(*) FROM TESLA.SUB_RUBRO)
@@ -364,7 +364,7 @@ INSERT INTO TESLA.SUB_RUBRO(sub_rubr_descripcion, sub_rubr_rubro)
 		si hay SubRubro 3 perteneciente al Rubro X
 		si hay SubRubro 1 perteneciente al Rubro Y
 		si hay SubRubro 2 perteneciente al Rubro Y
-		si hay SubRubro 1 perteneciente al Rubro Y
+		si hay SubRubro 1 perteneciente al Rubro Z
 
 		Hay tres Rubros "X,Y,Z" 
 		Hay seis SubRubros "1,2,3,1,2,1", si bien hay tres subrubros que parecen repetirse ejemplo "1..1.1", pertenecen a rubros distintos, por lo que serian distintos subrubros.  
@@ -406,13 +406,81 @@ INSERT INTO TESLA.PROVINCIA(prov_nombre)
 
 	DECLARE @cantprovincias NVARCHAR(255)
 	SET @cantprovincias = (SELECT COUNT(*) FROM TESLA.PROVINCIA)
-	PRINT('Se agregaron ' + @cantprovincias + ' provincias') --deben ser 70
+	PRINT('Se agregaron ' + @cantprovincias + ' provincias') --deben ser 24
 END
 GO
+
+-- MIGRAR LOCALIDAD
+
+CREATE PROCEDURE TESLA.migrar_localidad
+AS
+BEGIN
+INSERT INTO TESLA.LOCALIDAD(loc_nombre, loc_provincia)
+	SELECT DISTINCT VEN_USUARIO_DOMICILIO_LOCALIDAD, P.prov_id
+	FROM gd_esquema.Maestra
+    JOIN TESLA.PROVINCIA P ON  P.prov_nombre = VEN_USUARIO_DOMICILIO_PROVINCIA
+	WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
+
+	UNION
+	SELECT DISTINCT ALMACEN_LOCALIDAD, P.prov_id
+	FROM gd_esquema.Maestra
+    JOIN TESLA.PROVINCIA P ON  P.prov_nombre = ALMACEN_PROVINCIA
+	WHERE ALMACEN_LOCALIDAD IS NOT NULL
+	UNION
+	SELECT DISTINCT CLI_USUARIO_DOMICILIO_LOCALIDAD, P.prov_id P
+	FROM gd_esquema.Maestra
+    JOIN TESLA.PROVINCIA P ON  P.prov_nombre = CLI_USUARIO_DOMICILIO_PROVINCIA
+	WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+    
+	DECLARE @cantprovincias NVARCHAR(255), 
+	SET @cantprovincias = (SELECT COUNT(*) FROM TESLA.PROVINCIA)
+	PRINT('Se agregaron ' + @cantprovincias + ' provincias') --deben ser 24
+END
+GO
+
+-- MIGRAR TIPO_ENVIO
+
+-- MIGRAR CONCEPTO_FACTURA
+
+-- MIGRAR PRODUCTO
+
+-- MIGRAR TIPO_MEDIO_DE_PAGO
+
+-- MIGRAR MEDIO_DE_PAGO
+
+-- MIGRAR CLIENTE
+
+-- MIGRAR VENDEDOR
+
+-- MIGRAR USUARIO
+
+-- MIGRAR DOMICILIO
+
+-- MIGRAR FACTURA
+
+-- MIGRAR ALMACEN
+
+-- MIGRAR PUBLICACION
+
+-- MIGRAR ITEM_FACTURA
+
+-- MIGRAR DETALLE_VENTA
+
+-- MIGRAR VENTA
+
+-- MIGRAR PAGO
+
+-- MIGRAR ENVIO
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(5)INDEX--------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+-- CREATE INDEX NOMBRETABLA_idx ON NOMBRETABLA(Nombre_fila);   Este crea un index con arbol B
+
+
+CREAT I
+EX ;
+
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(6)EXECUTE------------------------------------------------------------------------------------------------------------------------------------------------
