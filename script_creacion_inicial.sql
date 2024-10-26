@@ -24,6 +24,13 @@ IF OBJECT_ID('TESLA.migrar_domicilios_usuarios_clientes', 'P') IS NOT NULL DROP 
 IF OBJECT_ID('TESLA.migrar_domicilios_usuarios_vendedores', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_domicilios_usuarios_vendedores
 IF OBJECT_ID('TESLA.migrar_domicilios_almacenes', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_domicilios_almacenes
 IF OBJECT_ID('TESLA.migrar_pubicaciones', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_pubicaciones
+IF OBJECT_ID('TESLA.migrar_facturas', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_facturas
+IF OBJECT_ID('TESLA.migrar_items_factura', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_items_factura
+IF OBJECT_ID('TESLA.migrar_detalles_venta', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_detalles_venta
+IF OBJECT_ID('TESLA.migrar_ventas', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_ventas
+IF OBJECT_ID('TESLA.migrar_pagos', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_pagos
+IF OBJECT_ID('TESLA.migrar_envios', 'P') IS NOT NULL DROP PROCEDURE TESLA.migrar_envios
+
 
 
 --borrado de tablas
@@ -239,6 +246,7 @@ CREATE TABLE TESLA.PUBLICACION(
     publi_fecha_fin DATE,
     publi_precio DECIMAL(18,2),
     publi_costo DECIMAL(18,2),
+	publi_porc_venta DECIMAL(18,2),
     publi_almacen DECIMAL(18,0),
 	publi_vendedor DECIMAL(18,0),
     FOREIGN KEY (publi_producto) REFERENCES TESLA.PRODUCTO(prod_id),
@@ -255,7 +263,7 @@ CREATE TABLE TESLA.ITEM_FACTURA(
     item_publicacion DECIMAL(18,0),
     item_cantidad DECIMAL(18,0) NULL,
     item_precio DECIMAL(18,2) NULL,
-    item_asub_total DECIMAL(18,2) NULL,
+    item_sub_total DECIMAL(18,2) NULL,
     FOREIGN KEY (item_factura) REFERENCES TESLA.FACTURA(fact_id),
     FOREIGN KEY (item_concepto_factura) REFERENCES TESLA.CONCEPTO_FACTURA(conc_id),
     FOREIGN KEY (item_publicacion) REFERENCES TESLA.PUBLICACION(publi_id),
@@ -266,7 +274,7 @@ GO
 CREATE TABLE TESLA.DETALLE_VENTA(
     det_vent_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     det_vent_cantidad DECIMAL(18,0),
-    det_precio DECIMAL(18,0),
+    det_vent_precio DECIMAL(18,0),
     det_vent_subtotal DECIMAL(18,0),
 	det_vent_publicacion DECIMAL(18,0)
     FOREIGN KEY (det_vent_publicacion) REFERENCES TESLA.PUBLICACION(publi_id)
@@ -727,7 +735,8 @@ GO
 CREATE PROCEDURE TESLA.migrar_pubicaciones 
 AS
 BEGIN
-	INSERT INTO TESLA.PUBLICACION(publi_codigo, publi_descripcion, publi_stock, publi_fecha_inicio, publi_fecha_fin, publi_precio, publi_costo ,publi_almacen, publi_producto, publi_vendedor)
+	INSERT INTO TESLA.PUBLICACION(publi_codigo, publi_descripcion, publi_stock, publi_fecha_inicio, publi_fecha_fin, 
+								publi_precio, publi_costo, publi_porc_venta, publi_almacen, publi_producto, publi_vendedor)
 	SELECT DISTINCT 
 		PUBLICACION_CODIGO,
 		PUBLICACION_DESCRIPCION,
@@ -736,6 +745,7 @@ BEGIN
 		PUBLICACION_FECHA_V,
 		PUBLICACION_PRECIO,
 		PUBLICACION_COSTO,
+		PUBLICACION_PORC_VENTA,
 		A.alm_id,
 		P.prod_id,
 		V.vend_id
@@ -750,8 +760,8 @@ BEGIN
 	PRINT('Se agregaron ' + @cantPublicaciones + ' publicaciones') --deben ser XX
 END
 GO
+
 -- MIGRAR FACTURA
-/*
 CREATE PROCEDURE TESLA.migrar_facturas
 AS
 BEGIN
@@ -759,25 +769,167 @@ BEGIN
 	SELECT DISTINCT 
 		FACTURA_NUMERO,
 		FACTURA_FECHA,
-		FACTURA_
+		P.publi_vendedor,
+		FACTURA_TOTAL
 		from gd_esquema.Maestra
-		JOIN
+	JOIN TESLA.PUBLICACION P on PUBLICACION_CODIGO = p.publi_codigo 
+							and PUBLICACION_DESCRIPCION = P.publi_descripcion
+							and PUBLICACION_PRECIO = P.publi_precio
+	WHERE FACTURA_NUMERO IS NOT NULL
 	DECLARE @cantFacturas NVARCHAR(255) 
 	SET @cantFacturas = (SELECT COUNT(*) FROM TESLA.FACTURA)
 	PRINT('Se agregaron ' + @cantFacturas + ' facturas') --deben ser XX
 END
 GO
-*/
 
 -- MIGRAR ITEM_FACTURA
+CREATE PROCEDURE TESLA.migrar_items_factura
+AS
+BEGIN
+	INSERT INTO TESLA.ITEM_FACTURA(item_precio,item_sub_total,item_cantidad,item_publicacion,item_concepto_factura, item_factura)
+	SELECT DISTINCT 
+		FACTURA_DET_PRECIO,
+		FACTURA_DET_SUBTOTAL,
+		FACTURA_DET_CANTIDAD,
+		P.publi_id,
+		CF.conc_id,
+		F.fact_id
+		from gd_esquema.Maestra
+	JOIN TESLA.PUBLICACION P on PUBLICACION_CODIGO = p.publi_codigo 
+							and PUBLICACION_DESCRIPCION = P.publi_descripcion
+							and PUBLICACION_PRECIO = P.publi_precio
+	JOIN TESLA.CONCEPTO_FACTURA CF on CF.conc_descripcion = FACTURA_DET_TIPO
+	JOIN TESLA.FACTURA F on F.fact_numero = FACTURA_NUMERO 
+						and F.fact_fecha = FACTURA_FECHA
+	WHERE FACTURA_NUMERO IS NOT NULL
+	DECLARE @cantItemsFacturas NVARCHAR(255) 
+	SET @cantItemsFacturas = (SELECT COUNT(*) FROM TESLA.ITEM_FACTURA)
+	PRINT('Se agregaron ' + @cantItemsFacturas + ' items de facturas') --deben ser XX
+END
+GO
+
 
 -- MIGRAR DETALLE_VENTA
+CREATE PROCEDURE TESLA.migrar_detalles_venta
+AS
+BEGIN
+	INSERT INTO TESLA.DETALLE_VENTA(det_vent_cantidad,det_vent_precio,det_vent_subtotal,det_vent_publicacion)
+	SELECT DISTINCT 
+		VENTA_DET_CANT,
+		VENTA_DET_PRECIO,
+		VENTA_DET_SUB_TOTAL,
+		P.publi_id
+		from gd_esquema.Maestra
+	JOIN TESLA.PUBLICACION P on PUBLICACION_CODIGO = p.publi_codigo 
+							and PUBLICACION_DESCRIPCION = P.publi_descripcion
+							and PUBLICACION_PRECIO = P.publi_precio
+	WHERE VENTA_CODIGO IS NOT NULL
+
+	DECLARE @cantDetallesVentas NVARCHAR(255) 
+	SET @cantDetallesVentas = (SELECT COUNT(*) FROM TESLA.DETALLE_VENTA)
+	PRINT('Se agregaron ' + @cantDetallesVentas + ' detalles de ventas') --deben ser XX
+END
+GO
 
 -- MIGRAR VENTA
+-- TODO: REVISAR VENTA Y DETALLE VENTA
+CREATE PROCEDURE TESLA.migrar_ventas
+AS
+BEGIN
+	INSERT INTO TESLA.VENTA(vent_cliente,vent_codigo,vent_detalle,vent_fecha, vent_total)
+	SELECT DISTINCT 
+		C.clien_id,
+		VENTA_CODIGO,
+		DV.det_vent_id,
+		VENTA_FECHA,
+		VENTA_TOTAL
+		from gd_esquema.Maestra
+	JOIN TESLA.CLIENTE C on C.clien_apellido = CLIENTE_APELLIDO
+						and C.clien_nombre = CLIENTE_NOMBRE
+						and C.clien_dni = CLIENTE_DNI
+
+	JOIN TESLA.PUBLICACION P on PUBLICACION_CODIGO = p.publi_codigo 
+							and PUBLICACION_DESCRIPCION = P.publi_descripcion
+							and PUBLICACION_PRECIO = P.publi_precio
+
+	JOIN TESLA.DETALLE_VENTA DV on DV.det_vent_cantidad = VENTA_DET_CANT
+								and DV.det_vent_precio = VENTA_DET_PRECIO
+								and DV.det_vent_subtotal = VENTA_DET_SUB_TOTAL
+								and DV.det_vent_publicacion = P.publi_id
+	WHERE VENTA_CODIGO IS NOT NULL
+
+	DECLARE @cantVentas NVARCHAR(255) 
+	SET @cantVentas = (SELECT COUNT(*) FROM TESLA.VENTA)
+	PRINT('Se agregaron ' + @cantVentas + ' ventas') --deben ser XX
+END
+GO
 
 -- MIGRAR PAGO
+-- TODO: NO SE MIGRAN TODOS LOS PAGOS PORQUE NO MATCHEA EL MEDIO DE PAGO
+-- HAY SOLO UN MEDIO DE PAGO POR EL TEMA DEL ACENTO/TILDE EN CREDITO, HAY QUE RESOLVER MEDIO DE PAGO PRIMERO
+CREATE PROCEDURE TESLA.migrar_pagos
+AS
+BEGIN
+	INSERT INTO TESLA.PAGO(pago_cuotas, pago_fecha, pago_fecha_vencimiento_tarjeta, pago_importe, pago_medio, pago_nro_tarjeta, pago_venta)
+	SELECT DISTINCT 
+		PAGO_CANT_CUOTAS,
+		PAGO_FECHA,
+		PAGO_FECHA_VENC_TARJETA,
+		PAGO_IMPORTE,
+		MP.medio_de_pago_id,
+		PAGO_NRO_TARJETA,
+		V.vent_id
+		from gd_esquema.Maestra
+	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = PAGO_MEDIO_PAGO
+
+	JOIN TESLA.VENTA V ON V.vent_codigo = VENTA_CODIGO
+	
+	WHERE PAGO_FECHA IS NOT NULL
+
+	DECLARE @cantPagos NVARCHAR(255) 
+	SET @cantPagos = (SELECT COUNT(*) FROM TESLA.PAGO)
+	PRINT('Se agregaron ' + @cantPagos + ' pagos') --deben ser XX
+END
+GO
 
 -- MIGRAR ENVIO
+--TODO : CAMBIAR TIME POR DECIMAL (HORARIOS)
+CREATE PROCEDURE TESLA.migrar_envios
+AS
+BEGIN
+	INSERT INTO TESLA.ENVIO(env_costo, env_domicilio, env_fecha_programada, env_fecha_entrega, env_horario_inicio,
+							env_horario_fin, env_tipo, env_venta)
+	SELECT DISTINCT 
+		ENVIO_COSTO,
+		D.domi_id,
+		ENVIO_FECHA_PROGAMADA,
+		ENVIO_FECHA_ENTREGA,
+		ENVIO_HORA_INICIO,
+		ENVIO_HORA_FIN_INICIO,
+		ENVIO_TIPO,
+		V.vent_id
+		from gd_esquema.Maestra
+	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = PAGO_MEDIO_PAGO
+
+	JOIN TESLA.VENTA V ON V.vent_codigo = VENTA_CODIGO
+	
+	JOIN TESLA.PROVINCIA P on P.prov_nombre = CLI_USUARIO_DOMICILIO_PROVINCIA
+
+	JOIN TESLA.LOCALIDAD L on L.loc_nombre = CLI_USUARIO_DOMICILIO_LOCALIDAD
+							and L.loc_provincia = P.prov_id
+
+	JOIN DOMICILIO D ON D.domi_calle = CLI_USUARIO_DOMICILIO_CALLE
+					and D.domi_cp = CLI_USUARIO_DOMICILIO_CP
+					and D.domi_nro_calle = CLI_USUARIO_DOMICILIO_NRO_CALLE
+					and D.domi_localidad = L.loc_id
+	
+	WHERE ENVIO_TIPO IS NOT NULL
+
+	DECLARE @cantEnvios NVARCHAR(255) 
+	SET @cantEnvios = (SELECT COUNT(*) FROM TESLA.ENVIO)
+	PRINT('Se agregaron ' + @cantEnvios + ' envios') --deben ser XX
+END
+GO
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(5)INDEX--------------------------------------------------------------------------------------------------------------------------------------------------
@@ -812,6 +964,12 @@ BEGIN
 	EXECUTE TESLA.migrar_domicilios_almacenes
 	EXECUTE TESLA.migrar_domicilios_almacenes
 	EXECUTE TESLA.migrar_pubicaciones
+	EXECUTE TESLA.migrar_facturas
+	EXECUTE TESLA.migrar_items_factura
+	EXECUTE TESLA.migrar_detalles_venta
+	EXECUTE TESLA.migrar_ventas
+	EXECUTE TESLA.migrar_pagos
+	EXECUTE TESLA.migrar_envios
 	PRINT('')
 	PRINT('SE LLENARON TODAS LAS TABLAS :)')
 END 
