@@ -524,7 +524,12 @@ CREATE PROCEDURE TESLA.migrar_tipos_medio_de_pago
 AS
 BEGIN
 INSERT INTO TESLA.TIPO_MEDIO_DE_PAGO(tipo_medio_de_pago_descripcion)
-	SELECT DISTINCT PAGO_TIPO_MEDIO_PAGO from gd_esquema.Maestra
+	SELECT DISTINCT 
+		CASE 
+            WHEN PAGO_TIPO_MEDIO_PAGO LIKE 'Tarjeta Cr%' THEN 'Tarjeta Credito'
+            ELSE PAGO_TIPO_MEDIO_PAGO 
+        END
+	 from gd_esquema.Maestra
 	WHERE PAGO_TIPO_MEDIO_PAGO IS NOT NULL
 
 	DECLARE @cantTiposMedioPago NVARCHAR(255) 
@@ -535,16 +540,23 @@ GO
 
 -- MIGRAR MEDIO_DE_PAGO
 
---TODO: CORREGIR ACENTOS
 CREATE PROCEDURE TESLA.migrar_medios_de_pago
 AS
 BEGIN
 INSERT INTO TESLA.MEDIO_DE_PAGO(medio_de_pago_descripcion, medio_de_pago_tipo)
-	SELECT DISTINCT PAGO_MEDIO_PAGO,
+	SELECT DISTINCT 
+					CASE 
+						WHEN PAGO_MEDIO_PAGO LIKE '%Visa Santander' THEN 'Tarjeta Credito Visa Santander'
+						ELSE PAGO_MEDIO_PAGO 
+					END,
 					TMP.tipo_medio_de_pago_id
 					from gd_esquema.Maestra
 
-	JOIN TESLA.TIPO_MEDIO_DE_PAGO TMP on TMP.tipo_medio_de_pago_descripcion = PAGO_TIPO_MEDIO_PAGO
+	JOIN TESLA.TIPO_MEDIO_DE_PAGO TMP on TMP.tipo_medio_de_pago_descripcion = 
+		CASE 
+				WHEN PAGO_TIPO_MEDIO_PAGO LIKE 'Tarjeta Cr%' THEN 'Tarjeta Credito'
+				ELSE PAGO_TIPO_MEDIO_PAGO 
+		END
 	WHERE PAGO_MEDIO_PAGO IS NOT NULL
 
 	DECLARE @cantMediosPago NVARCHAR(255) 
