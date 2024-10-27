@@ -313,8 +313,8 @@ GO
 CREATE TABLE TESLA.ENVIO(
     env_id DECIMAL(18,0) IDENTITY(1,1) PRIMARY KEY,
     env_fecha_programada DATE,
-    env_horario_inicio TIME,
-    env_horario_fin TIME,
+    env_horario_inicio DECIMAL(18,0),
+    env_horario_fin DECIMAL(18,0),
     env_costo DECIMAL(18,0),
     env_fecha_entrega DATETIME,
 	env_domicilio DECIMAL(18,0),
@@ -893,7 +893,6 @@ END
 GO
 
 -- MIGRAR ENVIO
---TODO : CAMBIAR TIME POR DECIMAL (HORARIOS)
 CREATE PROCEDURE TESLA.migrar_envios
 AS
 BEGIN
@@ -906,7 +905,7 @@ BEGIN
 		ENVIO_FECHA_ENTREGA,
 		ENVIO_HORA_INICIO,
 		ENVIO_HORA_FIN_INICIO,
-		ENVIO_TIPO,
+		TE.tipo_envio_id,
 		V.vent_id
 		from gd_esquema.Maestra
 	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = PAGO_MEDIO_PAGO
@@ -918,11 +917,11 @@ BEGIN
 	JOIN TESLA.LOCALIDAD L on L.loc_nombre = CLI_USUARIO_DOMICILIO_LOCALIDAD
 							and L.loc_provincia = P.prov_id
 
-	JOIN DOMICILIO D ON D.domi_calle = CLI_USUARIO_DOMICILIO_CALLE
+	JOIN TESLA.DOMICILIO D ON D.domi_calle = CLI_USUARIO_DOMICILIO_CALLE
 					and D.domi_cp = CLI_USUARIO_DOMICILIO_CP
 					and D.domi_nro_calle = CLI_USUARIO_DOMICILIO_NRO_CALLE
 					and D.domi_localidad = L.loc_id
-	
+	JOIN TESLA.TIPO_ENVIO TE ON TE.tipo_envio_descripcion = ENVIO_TIPO
 	WHERE ENVIO_TIPO IS NOT NULL
 
 	DECLARE @cantEnvios NVARCHAR(255) 
