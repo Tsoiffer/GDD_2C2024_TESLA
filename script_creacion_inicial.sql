@@ -891,8 +891,11 @@ BEGIN
 		PAGO_NRO_TARJETA,
 		V.vent_id
 		from gd_esquema.Maestra
-	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = PAGO_MEDIO_PAGO
-
+	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = 
+		CASE 
+			WHEN PAGO_MEDIO_PAGO LIKE '%Visa Santander' THEN 'Tarjeta Credito Visa Santander'
+			ELSE PAGO_MEDIO_PAGO 
+		END
 	JOIN TESLA.VENTA V ON V.vent_codigo = VENTA_CODIGO
 	
 	WHERE PAGO_FECHA IS NOT NULL
