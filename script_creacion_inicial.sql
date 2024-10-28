@@ -502,20 +502,17 @@ INSERT INTO TESLA.PRODUCTO(prod_codigo,prod_descripcion,prod_marca,prod_modelo,p
 					Mo.model_id,
 					PRODUCTO_PRECIO,
 					SR.sub_rubr_id
-					
 					FROM gd_esquema.Maestra
 	JOIN TESLA.MARCA Ma ON Ma.marca_descripcion = PRODUCTO_MARCA 
-
 	JOIN TESLA.MODELO Mo on Mo.model_codigo = PRODUCTO_MOD_CODIGO 
 						and Mo.model_descripcion = PRODUCTO_MOD_DESCRIPCION
-
 	JOIN TESLA.RUBRO R on R.rubr_descripcion = PRODUCTO_RUBRO_DESCRIPCION
 	JOIN TESLA.SUB_RUBRO Sr on SR.sub_rubr_descripcion = PRODUCTO_SUB_RUBRO and R.rubr_id = SR.sub_rubr_rubro
 	WHERE PRODUCTO_CODIGO IS NOT NULL
 
 	DECLARE @cantCantidadProductos NVARCHAR(255) 
 	SET @cantCantidadProductos = (SELECT COUNT(*) FROM TESLA.PRODUCTO)
-	PRINT('Se agregaron ' + @cantCantidadProductos + ' productos') --deben ser x
+	PRINT('Se agregaron ' + @cantCantidadProductos + ' productos') --deben ser 6893
 END
 GO
 
@@ -764,12 +761,14 @@ BEGIN
 		from gd_esquema.Maestra
 		JOIN TESLA.ALMACEN A on ALMACEN_CODIGO =  A.alm_codigo
 		JOIN TESLA.VENDEDOR V on VENDEDOR_CUIT = V.vend_cuit AND VENDEDOR_RAZON_SOCIAL = v.vend_razon_social
-		JOIN TESLA.PRODUCTO P on PRODUCTO_CODIGO = P.prod_codigo AND PRODUCTO_DESCRIPCION = P.prod_descripcion AND PRODUCTO_PRECIO = P.prod_precio
+		JOIN TESLA.RUBRO R on R.rubr_descripcion = PRODUCTO_RUBRO_DESCRIPCION
+		JOIN TESLA.SUB_RUBRO Sr on SR.sub_rubr_descripcion = PRODUCTO_SUB_RUBRO and R.rubr_id = SR.sub_rubr_rubro
+		JOIN TESLA.PRODUCTO P on PRODUCTO_CODIGO = P.prod_codigo AND P.prod_sub_rubro = Sr.sub_rubr_id
 		WHERE PUBLICACION_CODIGO is not null AND VENDEDOR_CUIT IS not null AND PRODUCTO_CODIGO IS NOT NULL
 
 	DECLARE @cantPublicaciones NVARCHAR(255) 
 	SET @cantPublicaciones = (SELECT COUNT(*) FROM TESLA.PUBLICACION)
-	PRINT('Se agregaron ' + @cantPublicaciones + ' publicaciones') --deben ser XX
+	PRINT('Se agregaron ' + @cantPublicaciones + ' publicaciones') --deben ser 34629
 END
 GO
 
@@ -826,7 +825,7 @@ CREATE PROCEDURE TESLA.migrar_detalles_venta
 AS
 BEGIN
 	INSERT INTO TESLA.DETALLE_VENTA(det_vent_cantidad,det_vent_precio,det_vent_subtotal,det_vent_publicacion)
-	SELECT DISTINCT 
+	SELECT DISTINCT
 		VENTA_DET_CANT,
 		VENTA_DET_PRECIO,
 		VENTA_DET_SUB_TOTAL,
