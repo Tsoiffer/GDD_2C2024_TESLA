@@ -340,11 +340,10 @@ INSERT INTO TESLA.RUBRO(rubr_descripcion) --ponemos los datos que vamos a guarda
 	SELECT DISTINCT PRODUCTO_RUBRO_DESCRIPCION
 	FROM gd_esquema.Maestra
 	WHERE PRODUCTO_RUBRO_DESCRIPCION IS NOT NULL
-	order by 1
-	--sirve para saber si estamos migrando elementos a la nueva tabla
+
 	DECLARE @cantRubros NVARCHAR(255)
 	SET @cantRubros = (SELECT COUNT(*) FROM TESLA.RUBRO)
-	PRINT('Se agregaron ' + @cantRubros + ' rubros') --deben ser 22
+	PRINT('Se agregaron ' + @cantRubros + ' rubros de 22') --deben ser 22
 END
 GO
 
@@ -359,7 +358,7 @@ INSERT INTO TESLA.MARCA(marca_descripcion)
 
 	DECLARE @cantMarcas NVARCHAR(255)
 	SET @cantMarcas = (SELECT COUNT(*) FROM TESLA.MARCA)
-	PRINT('Se agregaron ' + @cantMarcas + ' marcas') --deben ser 4
+	PRINT('Se agregaron ' + @cantMarcas + ' marcas de 4') --deben ser 4
 END
 GO
 
@@ -370,21 +369,11 @@ BEGIN
 INSERT INTO TESLA.SUB_RUBRO(sub_rubr_descripcion, sub_rubr_rubro)
 	SELECT DISTINCT PRODUCTO_SUB_RUBRO, R.rubr_id
 	FROM gd_esquema.Maestra JOIN TESLA.RUBRO R ON PRODUCTO_RUBRO_DESCRIPCION = R.rubr_descripcion
+	WHERE PRODUCTO_SUB_RUBRO IS NOT NULL
 
 	DECLARE @cantSubRubros NVARCHAR(255)
 	SET @cantSubRubros = (SELECT COUNT(*) FROM TESLA.SUB_RUBRO)
-	PRINT('Se agregaron ' + @cantSubRubros + ' sub rubros') --deben ser 815 
-	/* 
-		si hay SubRubro 1 perteneciente al Rubro X
-		si hay SubRubro 2 perteneciente al Rubro X
-		si hay SubRubro 3 perteneciente al Rubro X
-		si hay SubRubro 1 perteneciente al Rubro Y
-		si hay SubRubro 2 perteneciente al Rubro Y
-		si hay SubRubro 1 perteneciente al Rubro Z
-
-		Hay tres Rubros "X,Y,Z" 
-		Hay seis SubRubros "1,2,3,1,2,1", si bien hay tres subrubros que parecen repetirse ejemplo "1..1.1", pertenecen a rubros distintos, por lo que serian distintos subrubros.  
-	*/
+	PRINT('Se agregaron ' + @cantSubRubros + ' sub rubros de 815') --deben ser 815 
 END
 GO
 
@@ -422,7 +411,7 @@ INSERT INTO TESLA.PROVINCIA(prov_nombre)
 
 	DECLARE @cantprovincias NVARCHAR(255)
 	SET @cantprovincias = (SELECT COUNT(*) FROM TESLA.PROVINCIA)
-	PRINT('Se agregaron ' + @cantprovincias + ' provincias') --deben ser 24
+	PRINT('Se agregaron ' + @cantprovincias + ' provincias de 24') --deben ser 24
 END
 GO
 
@@ -436,7 +425,6 @@ INSERT INTO TESLA.LOCALIDAD(loc_nombre, loc_provincia)
 	FROM gd_esquema.Maestra
     JOIN TESLA.PROVINCIA P ON  P.prov_nombre = VEN_USUARIO_DOMICILIO_PROVINCIA
 	WHERE VEN_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
-
 	UNION
 	SELECT DISTINCT ALMACEN_LOCALIDAD, P.prov_id
 	FROM gd_esquema.Maestra
@@ -446,11 +434,11 @@ INSERT INTO TESLA.LOCALIDAD(loc_nombre, loc_provincia)
 	SELECT DISTINCT CLI_USUARIO_DOMICILIO_LOCALIDAD, P.prov_id P
 	FROM gd_esquema.Maestra
     JOIN TESLA.PROVINCIA P ON  P.prov_nombre = CLI_USUARIO_DOMICILIO_PROVINCIA
-	WHERE CLI_USUARIO_DOMICILIO_PROVINCIA IS NOT NULL
+	WHERE CLI_USUARIO_DOMICILIO_LOCALIDAD IS NOT NULL
     
 	DECLARE @cantlocalidades NVARCHAR(255) 
 	SET @cantlocalidades = (SELECT COUNT(*) FROM TESLA.LOCALIDAD)
-	PRINT('Se agregaron ' + @cantlocalidades + ' localidades')
+	PRINT('Se agregaron ' + @cantlocalidades + ' localidades de 16918')  --deben ser 16918
 END
 GO
 
@@ -461,9 +449,10 @@ BEGIN
 INSERT INTO TESLA.TIPO_ENVIO(tipo_envio_descripcion)
 	SELECT DISTINCT ENVIO_TIPO FROM gd_esquema.Maestra
 	WHERE ENVIO_TIPO IS NOT NULL
+
 	DECLARE @cantTiposEnvio NVARCHAR(255) 
 	SET @cantTiposEnvio = (SELECT COUNT(*) FROM TESLA.TIPO_ENVIO)
-	PRINT('Se agregaron ' + @cantTiposEnvio + ' tipos de env�o') --deben ser 3
+	PRINT('Se agregaron ' + @cantTiposEnvio + ' tipos de envio de 3') --deben ser 3
 END
 GO
 
@@ -474,11 +463,13 @@ BEGIN
 INSERT INTO TESLA.CONCEPTO_FACTURA(conc_descripcion)
 	SELECT DISTINCT FACTURA_DET_TIPO FROM gd_esquema.Maestra
 	WHERE FACTURA_DET_TIPO IS NOT NULL
+
 	DECLARE @cantConceptosFactura NVARCHAR(255) 
 	SET @cantConceptosFactura = (SELECT COUNT(*) FROM TESLA.CONCEPTO_FACTURA)
-	PRINT('Se agregaron ' + @cantConceptosFactura + ' conceptos de factura') --deben ser 3
+	PRINT('Se agregaron ' + @cantConceptosFactura + ' conceptos de factura de 3') --deben ser 3
 END
 GO
+
 -- MIGRAR PRODUCTO
 CREATE PROCEDURE TESLA.migrar_productos
 AS
@@ -500,7 +491,7 @@ INSERT INTO TESLA.PRODUCTO(prod_codigo,prod_descripcion,prod_marca,prod_modelo,p
 
 	DECLARE @cantCantidadProductos NVARCHAR(255) 
 	SET @cantCantidadProductos = (SELECT COUNT(*) FROM TESLA.PRODUCTO)
-	PRINT('Se agregaron ' + @cantCantidadProductos + ' productos') --deben ser 6893
+	PRINT('Se agregaron ' + @cantCantidadProductos + ' productos de 6893') --deben ser 6893
 END
 GO
 
@@ -519,24 +510,22 @@ INSERT INTO TESLA.TIPO_MEDIO_DE_PAGO(tipo_medio_de_pago_descripcion)
 
 	DECLARE @cantTiposMedioPago NVARCHAR(255) 
 	SET @cantTiposMedioPago = (SELECT COUNT(*) FROM TESLA.TIPO_MEDIO_DE_PAGO)
-	PRINT('Se agregaron ' + @cantTiposMedioPago + ' tipos de medio de pago') --deben ser 2
+	PRINT('Se agregaron ' + @cantTiposMedioPago + ' tipos de medio de pago de 2') --deben ser 2
 END
 GO
 
 -- MIGRAR MEDIO_DE_PAGO
-
 CREATE PROCEDURE TESLA.migrar_medios_de_pago
 AS
 BEGIN
 INSERT INTO TESLA.MEDIO_DE_PAGO(medio_de_pago_descripcion, medio_de_pago_tipo)
 	SELECT DISTINCT 
-					CASE 
-						WHEN PAGO_MEDIO_PAGO LIKE '%Visa Santander' THEN 'Tarjeta Credito Visa Santander'
-						ELSE PAGO_MEDIO_PAGO 
-					END,
-					TMP.tipo_medio_de_pago_id
-					from gd_esquema.Maestra
-
+		CASE 
+			WHEN PAGO_MEDIO_PAGO LIKE '%Visa Santander' THEN 'Tarjeta Credito Visa Santander'
+			ELSE PAGO_MEDIO_PAGO 
+		END,
+		TMP.tipo_medio_de_pago_id
+	from gd_esquema.Maestra
 	JOIN TESLA.TIPO_MEDIO_DE_PAGO TMP on TMP.tipo_medio_de_pago_descripcion = 
 		CASE 
 				WHEN PAGO_TIPO_MEDIO_PAGO LIKE 'Tarjeta Cr%' THEN 'Tarjeta Credito'
@@ -546,7 +535,7 @@ INSERT INTO TESLA.MEDIO_DE_PAGO(medio_de_pago_descripcion, medio_de_pago_tipo)
 
 	DECLARE @cantMediosPago NVARCHAR(255) 
 	SET @cantMediosPago = (SELECT COUNT(*) FROM TESLA.MEDIO_DE_PAGO)
-	PRINT('Se agregaron ' + @cantMediosPago + ' medios de pago') --deben ser 5
+	PRINT('Se agregaron ' + @cantMediosPago + ' medios de pago de 5') --deben ser 5
 END
 GO
 
@@ -565,9 +554,10 @@ INSERT INTO TESLA.CLIENTE(clien_apellido, clien_dni, clien_fecha_nacimiento, cli
 
 	DECLARE @cantClientes NVARCHAR(255) 
 	SET @cantClientes = (SELECT COUNT(*) FROM TESLA.CLIENTE)
-	PRINT('Se agregaron ' + @cantClientes + ' Clientes') --deben ser x
+	PRINT('Se agregaron ' + @cantClientes + ' Clientes de 41298') --deben ser 41298
 END
 GO
+
 -- MIGRAR VENDEDOR
 CREATE PROCEDURE TESLA.migrar_vendedores
 AS
@@ -581,7 +571,7 @@ INSERT INTO TESLA.VENDEDOR(vend_cuit, vend_mail, vend_razon_social)
 
 	DECLARE @cantVendedores NVARCHAR(255) 
 	SET @cantVendedores = (SELECT COUNT(*) FROM TESLA.VENDEDOR)
-	PRINT('Se agregaron ' + @cantVendedores + ' vendedores') --deben ser x
+	PRINT('Se agregaron ' + @cantVendedores + ' vendedores de 89') --deben ser 89
 END
 GO
 
@@ -595,8 +585,7 @@ INSERT INTO TESLA.USUARIO(usr_cliente, usr_fecha_creacion, usr_nombre, usr_pass,
 					CLI_USUARIO_NOMBRE,
 					CLI_USUARIO_PASS,
 					NULL
-					from gd_esquema.Maestra
-
+			from gd_esquema.Maestra
 	JOIN TESLA.CLIENTE C on C.clien_dni = CLIENTE_DNI
 						and C.clien_apellido = CLIENTE_APELLIDO
 						and C.clien_nombre = CLIENTE_NOMBRE
@@ -604,7 +593,7 @@ INSERT INTO TESLA.USUARIO(usr_cliente, usr_fecha_creacion, usr_nombre, usr_pass,
 
 	DECLARE @cantUsuariosClientes NVARCHAR(255) 
 	SET @cantUsuariosClientes = (SELECT COUNT(*) FROM TESLA.CLIENTE)
-	PRINT('Se agregaron ' + @cantUsuariosClientes + ' usuarios clientes') --deben ser x
+	PRINT('Se agregaron ' + @cantUsuariosClientes + ' usuarios clientes de 41298') --deben ser 41298
 END
 GO
 
@@ -618,17 +607,17 @@ INSERT INTO TESLA.USUARIO(usr_cliente, usr_fecha_creacion, usr_nombre, usr_pass,
 					VEN_USUARIO_NOMBRE,
 					VEN_USUARIO_PASS,
 					V.vend_id
-					from gd_esquema.Maestra
-
+			from gd_esquema.Maestra
 	JOIN TESLA.VENDEDOR V on V.vend_cuit = VENDEDOR_CUIT
 						and V.vend_razon_social = VENDEDOR_RAZON_SOCIAL
 	WHERE VEN_USUARIO_NOMBRE IS NOT NULL
 
 	DECLARE @cantUsuariosVendedores NVARCHAR(255) 
 	SET @cantUsuariosVendedores = (SELECT COUNT(*) FROM TESLA.VENDEDOR)
-	PRINT('Se agregaron ' + @cantUsuariosVendedores + ' usuarios vendedores') --deben ser x
+	PRINT('Se agregaron ' + @cantUsuariosVendedores + ' usuarios vendedores de 89') --deben ser 89
 END
 GO
+
 -- MIGRAR ALMACEN
 CREATE PROCEDURE TESLA.migrar_almacenes
 AS
@@ -641,7 +630,7 @@ INSERT INTO TESLA.ALMACEN(alm_codigo, alm_costo_diario)
 
 	DECLARE @cantAlmacenes NVARCHAR(255) 
 	SET @cantAlmacenes = (SELECT COUNT(*) FROM TESLA.ALMACEN)
-	PRINT('Se agregaron ' + @cantAlmacenes + ' almacenes') --deben ser 68
+	PRINT('Se agregaron ' + @cantAlmacenes + ' almacenes de 68') --deben ser 68
 END
 GO
 
@@ -669,8 +658,8 @@ BEGIN
 								  L.loc_provincia = P.prov_id
 
 	DECLARE @cantDomiciliosClientes NVARCHAR(255) 
-	SET @cantDomiciliosClientes = (SELECT COUNT(*) FROM TESLA.CLIENTE)
-	PRINT('Se agregaron ' + @cantDomiciliosClientes + ' domicilios de clientes') --deben ser 41298
+	SET @cantDomiciliosClientes = (SELECT COUNT(*) FROM TESLA.DOMICILIO)
+	PRINT('Se agregaron ' + @cantDomiciliosClientes + ' domicilios de clientes de 41298') --deben ser 41298
 END
 GO
 
@@ -697,8 +686,8 @@ BEGIN
 								  L.loc_provincia = P.prov_id
 
 	DECLARE @cantDomiciliosVendedores NVARCHAR(255) 
-	SET @cantDomiciliosVendedores = (SELECT COUNT(*) FROM TESLA.VENDEDOR)
-	PRINT('Se agregaron ' + @cantDomiciliosVendedores + ' domicilios de vendedores') --deben ser 89
+	SET @cantDomiciliosVendedores = (SELECT COUNT(*) FROM TESLA.DOMICILIO) - (SELECT COUNT(*) FROM TESLA.CLIENTE)
+	PRINT('Se agregaron ' + @cantDomiciliosVendedores + ' domicilios de vendedores de 89') --deben ser 89
 END
 GO
 
@@ -723,8 +712,8 @@ BEGIN
 								  L.loc_provincia = P.prov_id
 
 	DECLARE @cantDomiciliosAlmacenes NVARCHAR(255) 
-	SET @cantDomiciliosAlmacenes = (SELECT COUNT(*) FROM TESLA.ALMACEN)
-	PRINT('Se agregaron ' + @cantDomiciliosAlmacenes + ' domicilios de Almacenes') --deben ser 68
+	SET @cantDomiciliosAlmacenes = (SELECT COUNT(*) FROM TESLA.DOMICILIO) - (SELECT COUNT(*) FROM TESLA.CLIENTE) - (SELECT COUNT(*) FROM TESLA.VENDEDOR)
+	PRINT('Se agregaron ' + @cantDomiciliosAlmacenes + ' domicilios de Almacenes de 68') --deben ser 68
 END
 GO
 
@@ -734,7 +723,7 @@ AS
 BEGIN
 	INSERT INTO TESLA.PUBLICACION(publi_codigo, publi_descripcion, publi_stock, publi_fecha_inicio, publi_fecha_fin, 
 								publi_precio, publi_costo, publi_porc_venta, publi_almacen, publi_producto, publi_vendedor)
-	SELECT DISTINCT 
+	SELECT DISTINCT
 		PUBLICACION_CODIGO,
 		PUBLICACION_DESCRIPCION,
 		PUBLICACION_STOCK,
@@ -756,7 +745,7 @@ BEGIN
 
 	DECLARE @cantPublicaciones NVARCHAR(255) 
 	SET @cantPublicaciones = (SELECT COUNT(*) FROM TESLA.PUBLICACION)
-	PRINT('Se agregaron ' + @cantPublicaciones + ' publicaciones') --deben ser 34629
+	PRINT('Se agregaron ' + @cantPublicaciones + ' publicaciones de 34629') --deben ser 34629
 END
 GO
 
@@ -775,9 +764,10 @@ BEGIN
 							and PUBLICACION_DESCRIPCION = P.publi_descripcion
 							and PUBLICACION_PRECIO = P.publi_precio
 	WHERE FACTURA_NUMERO IS NOT NULL
+
 	DECLARE @cantFacturas NVARCHAR(255) 
 	SET @cantFacturas = (SELECT COUNT(*) FROM TESLA.FACTURA)
-	PRINT('Se agregaron ' + @cantFacturas + ' facturas') --deben ser XX
+	PRINT('Se agregaron ' + @cantFacturas + ' facturas de 34629') --deben ser 34629
 END
 GO
 
@@ -801,14 +791,14 @@ BEGIN
 	JOIN TESLA.FACTURA F on F.fact_numero = FACTURA_NUMERO 
 						and F.fact_fecha = FACTURA_FECHA
 	WHERE FACTURA_NUMERO IS NOT NULL
+
 	DECLARE @cantItemsFacturas NVARCHAR(255) 
 	SET @cantItemsFacturas = (SELECT COUNT(*) FROM TESLA.ITEM_FACTURA)
-	PRINT('Se agregaron ' + @cantItemsFacturas + ' items de facturas') --deben ser XX
+	PRINT('Se agregaron ' + @cantItemsFacturas + ' items de facturas de 103887') --deben ser 103887
 END
 GO
 
 -- MIGRAR VENTA
--- TODO: REVISAR VENTA Y DETALLE VENTA
 CREATE PROCEDURE TESLA.migrar_ventas
 AS
 BEGIN
@@ -822,15 +812,11 @@ BEGIN
 	JOIN TESLA.CLIENTE C on C.clien_apellido = CLIENTE_APELLIDO
 						and C.clien_nombre = CLIENTE_NOMBRE
 						and C.clien_dni = CLIENTE_DNI
-
-	JOIN TESLA.PUBLICACION P on PUBLICACION_CODIGO = p.publi_codigo 
-							and PUBLICACION_DESCRIPCION = P.publi_descripcion
-							and PUBLICACION_PRECIO = P.publi_precio
 	WHERE VENTA_CODIGO IS NOT NULL
 
 	DECLARE @cantVentas NVARCHAR(255) 
 	SET @cantVentas = (SELECT COUNT(*) FROM TESLA.VENTA)
-	PRINT('Se agregaron ' + @cantVentas + ' ventas') --deben ser XX
+	PRINT('Se agregaron ' + @cantVentas + ' ventas de 103592') --deben ser 103592
 END
 GO
 
@@ -854,15 +840,11 @@ BEGIN
 
 	DECLARE @cantDetallesVentas NVARCHAR(255) 
 	SET @cantDetallesVentas = (SELECT COUNT(*) FROM TESLA.DETALLE_VENTA)
-	PRINT('Se agregaron ' + @cantDetallesVentas + ' detalles de ventas') --deben ser XX
+	PRINT('Se agregaron ' + @cantDetallesVentas + ' detalles de ventas 103592') --deben ser 103592
 END
 GO
 
-
-
 -- MIGRAR PAGO
--- TODO: NO SE MIGRAN TODOS LOS PAGOS PORQUE NO MATCHEA EL MEDIO DE PAGO
--- HAY SOLO UN MEDIO DE PAGO POR EL TEMA DEL ACENTO/TILDE EN CREDITO, HAY QUE RESOLVER MEDIO DE PAGO PRIMERO
 CREATE PROCEDURE TESLA.migrar_pagos
 AS
 BEGIN
@@ -887,7 +869,7 @@ BEGIN
 
 	DECLARE @cantPagos NVARCHAR(255) 
 	SET @cantPagos = (SELECT COUNT(*) FROM TESLA.PAGO)
-	PRINT('Se agregaron ' + @cantPagos + ' pagos') --deben ser XX
+	PRINT('Se agregaron ' + @cantPagos + ' pagos de 103592') --deben ser 103592
 END
 GO
 
@@ -907,15 +889,10 @@ BEGIN
 		TE.tipo_envio_id,
 		V.vent_id
 		from gd_esquema.Maestra
-	JOIN TESLA.MEDIO_DE_PAGO MP on MP.medio_de_pago_descripcion = PAGO_MEDIO_PAGO
-
 	JOIN TESLA.VENTA V ON V.vent_codigo = VENTA_CODIGO
-	
 	JOIN TESLA.PROVINCIA P on P.prov_nombre = CLI_USUARIO_DOMICILIO_PROVINCIA
-
 	JOIN TESLA.LOCALIDAD L on L.loc_nombre = CLI_USUARIO_DOMICILIO_LOCALIDAD
 							and L.loc_provincia = P.prov_id
-
 	JOIN TESLA.DOMICILIO D ON D.domi_calle = CLI_USUARIO_DOMICILIO_CALLE
 					and D.domi_cp = CLI_USUARIO_DOMICILIO_CP
 					and D.domi_nro_calle = CLI_USUARIO_DOMICILIO_NRO_CALLE
@@ -925,7 +902,7 @@ BEGIN
 
 	DECLARE @cantEnvios NVARCHAR(255) 
 	SET @cantEnvios = (SELECT COUNT(*) FROM TESLA.ENVIO)
-	PRINT('Se agregaron ' + @cantEnvios + ' envios') --deben ser XX
+	PRINT('Se agregaron ' + @cantEnvios + ' envios de 103592') --deben ser 103592
 END
 GO
 
@@ -933,7 +910,6 @@ GO
 -----------------------------------------------------(4)EXECUTE------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 BEGIN TRANSACTION
-BEGIN
 	EXECUTE TESLA.migrar_rubros
 	EXECUTE TESLA.migrar_marcas
 	EXECUTE TESLA.migrar_sub_rubros
@@ -962,4 +938,4 @@ BEGIN
 	EXECUTE TESLA.migrar_envios
 	PRINT('')
 	PRINT('SE LLENARON TODAS LAS TABLAS :)')
-END 
+COMMIT
