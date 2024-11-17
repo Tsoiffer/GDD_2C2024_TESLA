@@ -215,6 +215,11 @@ CREATE TABLE TESLA.BI_SUBRUBRO (
 	bi_subr_rubro_descripcion VARCHAR(255)
 );
 
+CREATE TABLE TESLA.BI_MARCA (
+    bi_marca_id DECIMAL(18, 0) PRIMARY KEY,
+	bi_marca_descripcion VARCHAR(255)
+);
+
 
 CREATE TABLE TESLA.BI_VENTA (
     bi_vent_codigo DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
@@ -450,26 +455,45 @@ GO
 -----------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
---DIMENSION SUCURSAL
-CREATE PROCEDURE TESLA.bi_migrar_sucursal AS
-BEGIN
-	INSERT INTO TESLA.BI_SUCURSAL (bi_sucu_numero, bi_sucu_nombre)
-	SELECT DISTINCT
-		sucu_numero,
-		sucu_nombre
-	FROM TESLA.SUCURSAL
-END
-GO
-
 --DIMENSION TIEMPO
 CREATE PROCEDURE TESLA.bi_migrar_tiempo AS
 BEGIN
-	INSERT INTO TESLA.BI_TIEMPO (bi_tiem_anio,bi_tiem_mes,bi_tiem_cuatrimestre)
+	INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio,bi_tiempo_mes,bi_tiempo_cuatrimestre)
 	SELECT DISTINCT
-		YEAR(tick_fecha_y_hora),
-		MONTH(tick_fecha_y_hora),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(tick_fecha_y_hora))
-	FROM TESLA.TICKET
+		YEAR(publi_fecha_inicio),
+		MONTH(publi_fecha_inicio),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_inicio))
+	FROM TESLA.PUBLICACION
+	UNION ALL
+	SELECT DISTINCT
+		YEAR(publi_fecha_fin),
+		MONTH(publi_fecha_fin),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_fin))
+	FROM TESLA.PUBLICACION
+	UNION ALL
+	SELECT DISTINCT
+		YEAR(vent_fecha),
+		MONTH(vent_fecha),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(vent_fecha))
+	FROM TESLA.VENTA
+	UNION ALL
+	SELECT DISTINCT
+		YEAR(env_fecha_programada),
+		MONTH(env_fecha_programada),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_programada))
+	FROM TESLA.ENVIO
+	UNION ALL
+	SELECT DISTINCT
+		YEAR(env_fecha_entrega),
+		MONTH(env_fecha_entrega),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_entrega))
+	FROM TESLA.ENVIO
+	UNION ALL
+	SELECT DISTINCT
+		YEAR(pago_fecha),
+		MONTH(pago_fecha),
+		TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
+	FROM TESLA.PAGO
 END
 GO
 
@@ -479,17 +503,17 @@ BEGIN
 	INSERT INTO TESLA.BI_UBICACION (bi_ubic_provincia,bi_ubic_localidad)
 	SELECT DISTINCT
 		prov_nombre,
-		loca_nombre
+		loc_nombre
 	FROM TESLA.LOCALIDAD
 	LEFT JOIN TESLA.PROVINCIA
-		ON prov_codigo = loca_provincia
+		ON prov_id = loc_provincia
 END
 GO
 
 --DIMENSION RANGO_ETARIO
-CREATE PROCEDURE TESLA.bi_migrar_rango_etario AS
+CREATE PROCEDURE TESLA.bi_migrar_rango_etario_clientes AS
 BEGIN
-	INSERT INTO TESLA.BI_RANGO_ETARIO (bi_rang_nombre)
+	INSERT INTO TESLA.BI_RANGO_ETARIO_CLIENTES(bi_rango_etario_nombre)
 	VALUES	('< 25'),
 			('25 - 35'),
             ('35 - 50'),
@@ -497,21 +521,22 @@ BEGIN
 END
 GO
 
---DIMENSION TIPO_CAJA
-CREATE PROCEDURE TESLA.bi_migrar_tipo_caja AS
+
+--DIMENSION RANGO HORARIO VENTAS
+CREATE PROCEDURE TESLA.bi_migrar_rango_horario_ventas AS
 BEGIN
-	INSERT INTO TESLA.BI_TIPO_CAJA (bi_tipo_caja_codigo,bi_tipo_caja_nombre)
-	SELECT DISTINCT
-		tipo_codigo,
-		tipo_nombre
-	FROM TESLA.TIPO_CAJA
+    INSERT INTO TESLA.BI_RANGO_HORARIO_VENTAS(bi_rango_horario_inicio, bi_rango_horario_final)
+    VALUES (0,6),
+           (6,12),
+           (12,18),
+		   (18,0)
 END
 GO
-
---DIMENSION MEDIO_DE_PAGO
-CREATE PROCEDURE TESLA.bi_migrar_medio_de_pago AS
+--DIMENSION MEDIO_DE_PAGO 
+-- TODO
+CREATE PROCEDURE TESLA.bi_migrar_tipo_medio_de_pago AS
 BEGIN
-	INSERT INTO TESLA.BI_MEDIO_DE_PAGO (bi_medi_codigo,bi_medi_tipo_descripcion,bi_medi_descripcion)
+	INSERT INTO TESLA.BI_TIPO_MEDIO_DE_PAGO(bi_tipo_medio_pago_descripcion)
 	SELECT DISTINCT
 		medi_codigo,
 		tipo_medio_descripcion,
@@ -522,38 +547,37 @@ BEGIN
 END
 GO
 
---DIMENSION TURNO
-CREATE PROCEDURE TESLA.bi_migrar_turno AS
+
+--DIMENSION TIPO ENVIO
+CREATE PROCEDURE TESLA.bi_migrar_tipo_envio AS
 BEGIN
-    INSERT INTO TESLA.BI_TURNO (bi_turno_rango)
-    VALUES ('08:00 - 12:00'),
-           ('12:00 - 16:00'),
-           ('16:00 - 20:00')
+    INSERT INTO TESLA.BI_TIPO_ENVIO(bi_tipo_envio_descripcion)
+    SELECT 
+         tipo_envio_descripcion
+    FROM TESLA.TIPO_ENVIO
+    
 END
 GO
 
---DIMENSION CATEGORIA
-CREATE PROCEDURE TESLA.bi_migrar_categoria AS
+--DIMENSION SUBRUBRO
+CREATE PROCEDURE TESLA.bi_migrar_subrubro AS
 BEGIN
-    INSERT INTO TESLA.BI_CATEGORIA (bi_cate_detalle)
+    INSERT INTO TESLA.BI_SUBRUBRO(bi_subr_descripcion,bi_subr_rubro_descripcion)
     SELECT DISTINCT 
-        cate_detalle 
-    FROM TESLA.CATEGORIA
-    UNION ALL
-    SELECT DISTINCT 
-        subc_nombre 
-    FROM TESLA.SUBCATEGORIA
+        sub_rubr_descripcion,
+		rubr_descripcion
+    FROM TESLA.SUB_RUBRO
+	join TESLA.RUBRO on sub_rubr_rubro = rubr_id
 END
 GO
 
---DIMENSION CUOTA
-CREATE PROCEDURE TESLA.bi_migrar_cuota AS
+--DIMENSION MARCA
+CREATE PROCEDURE TESLA.bi_migrar_marca AS
 BEGIN
-    INSERT INTO TESLA.BI_CUOTA (bi_cuota_detalle)
+    INSERT INTO TESLA.BI_MARCA(bi_marca_descripcion)
     SELECT DISTINCT 
-        ISNULL(deta_cuotas,0)
-    FROM TESLA.DETALLE_PAGO
-
+		marca_descripcion
+    FROM TESLA.MARCA
 END
 GO
 
