@@ -5,6 +5,49 @@ GO
 -----------------------------------------------------(1)ELIMINACION OBJETOS PREVIOS----------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
+-- DROP TABLAS
+IF OBJECT_ID('TESLA.BI_HECHO_FACTURACION ','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_FACTURACION
+
+IF OBJECT_ID('TESLA.BI_HECHO_ENVIO','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_ENVIO;
+
+IF OBJECT_ID('TESLA.BI_HECHO_PAGO ','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_PAGO
+
+IF OBJECT_ID('TESLA.BI_HECHO_VENTA','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_VENTA;
+
+IF OBJECT_ID('TESLA.BI_HECHO_PUBLICACION','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_PUBLICACION;
+
+IF OBJECT_ID('TESLA.BI_CONCEPTO_FACTURA','U') IS NOT NULL
+    DROP TABLE TESLA.BI_CONCEPTO_FACTURA;
+
+IF OBJECT_ID('TESLA.BI_MARCA','U') IS NOT NULL
+    DROP TABLE TESLA.BI_MARCA;
+
+IF OBJECT_ID('TESLA.BI_SUBRUBRO','U') IS NOT NULL
+    DROP TABLE TESLA.BI_SUBRUBRO;
+
+IF OBJECT_ID('TESLA.BI_TIPO_ENVIO','U') IS NOT NULL
+    DROP TABLE TESLA.BI_TIPO_ENVIO;
+
+IF OBJECT_ID('TESLA.BI_TIPO_MEDIO_DE_PAGO','U') IS NOT NULL
+    DROP TABLE TESLA.BI_TIPO_MEDIO_DE_PAGO;
+
+IF OBJECT_ID('TESLA.BI_RANGO_HORARIO_VENTAS','U') IS NOT NULL
+    DROP TABLE TESLA.BI_RANGO_HORARIO_VENTAS;
+
+IF OBJECT_ID('TESLA.BI_RANGO_ETARIO_CLIENTES','U') IS NOT NULL
+    DROP TABLE TESLA.BI_RANGO_ETARIO_CLIENTES;
+
+IF OBJECT_ID('TESLA.BI_UBICACION','U') IS NOT NULL
+    DROP TABLE TESLA.BI_UBICACION;
+
+IF OBJECT_ID('TESLA.BI_TIEMPO','U') IS NOT NULL
+    DROP TABLE TESLA.BI_TIEMPO;
+
 ---DROP FUNCIONES
 
 IF OBJECT_ID('TESLA.OBTENER_CODIGO_CATEGORIA') IS NOT NULL
@@ -126,46 +169,7 @@ IF OBJECT_ID('TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO') IS NOT NULL
   DROP VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO;
 GO
 
--- DROP TABLAS
-IF OBJECT_ID('TESLA.BI_PAGO ','U') IS NOT NULL
-    DROP TABLE TESLA.BI_PAGO;
 
-IF OBJECT_ID('TESLA.BI_ENVIO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_ENVIO;
-
-IF OBJECT_ID('TESLA.BI_VENTA_X_PRODUCTO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_VENTA_X_PRODUCTO;
-
-IF OBJECT_ID('TESLA.BI_VENTA','U') IS NOT NULL
-    DROP TABLE TESLA.BI_VENTA;
-
-IF OBJECT_ID('TESLA.BI_TURNO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_TURNO;
-
-IF OBJECT_ID('TESLA.BI_CATEGORIA','U') IS NOT NULL
-    DROP TABLE TESLA.BI_CATEGORIA;
-
-IF OBJECT_ID('TESLA.BI_CUOTA','U') IS NOT NULL
-    DROP TABLE TESLA.BI_CUOTA;
-
-IF OBJECT_ID('TESLA.BI_MEDIO_DE_PAGO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_MEDIO_DE_PAGO;
-
-IF OBJECT_ID('TESLA.BI_TIPO_CAJA','U') IS NOT NULL
-    DROP TABLE TESLA.BI_TIPO_CAJA;
-
-IF OBJECT_ID('TESLA.BI_RANGO_ETARIO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_RANGO_ETARIO;
-
-IF OBJECT_ID('TESLA.BI_UBICACION','U') IS NOT NULL
-    DROP TABLE TESLA.BI_UBICACION;
-
-IF OBJECT_ID('TESLA.BI_TIEMPO','U') IS NOT NULL
-    DROP TABLE TESLA.BI_TIEMPO;
-
-IF OBJECT_ID('TESLA.BI_SUCURSAL','U') IS NOT NULL
-    DROP TABLE TESLA.BI_SUCURSAL;
-GO
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 ---------------------------------------------------(2)CREACION DE ESQUEMA Y TABLAS------------------------------------------------------------------------------------------------------------
@@ -220,72 +224,73 @@ CREATE TABLE TESLA.BI_MARCA (
 	bi_marca_descripcion VARCHAR(255)
 );
 
-
-CREATE TABLE TESLA.BI_VENTA (
-    bi_vent_codigo DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_vent_ubicacion DECIMAL(18, 0),
-    bi_vent_tiempo DECIMAL(18, 0),
-    bi_vent_sucursal DECIMAL(18, 0),
-    bi_vent_turno DECIMAL(18, 0),
-    bi_vent_rango_etario_empl DECIMAL(18, 0),
-    bi_vent_tipo_caja DECIMAL(18, 0),
-    bi_vent_monto DECIMAL(18, 2),
-    bi_vent_cantidad DECIMAL(18, 0),
-    bi_vent_descuento_MP DECIMAL(18, 2),
-    bi_vent_descuento_promocion DECIMAL(18, 2),
-    FOREIGN KEY (bi_vent_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_codigo),
-    FOREIGN KEY (bi_vent_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiem_codigo),
-    FOREIGN KEY (bi_vent_sucursal) 			REFERENCES TESLA.BI_SUCURSAL(bi_sucu_numero),
-    FOREIGN KEY (bi_vent_turno) 			REFERENCES TESLA.BI_TIPO_CAJA(bi_tipo_caja_codigo),
-    FOREIGN KEY (bi_vent_rango_etario_empl) REFERENCES TESLA.BI_RANGO_ETARIO(bi_rang_codigo),
-    FOREIGN KEY (bi_vent_tipo_caja) 		REFERENCES TESLA.BI_TIPO_CAJA(bi_tipo_caja_codigo)
+CREATE TABLE TESLA.BI_CONCEPTO_FACTURA (
+    bi_conc_id DECIMAL(18, 0) PRIMARY KEY,
+	bi_conc_descripcion VARCHAR(255)
 );
 
+-- TABLAS DE HECHOS
 
-CREATE TABLE TESLA.BI_VENTA_X_PRODUCTO (
-    bi_veXpr_codigo DECIMAL(18, 0) 		IDENTITY(1,1) PRIMARY KEY,
-    bi_veXpr_tiempo DECIMAL(18, 0),
-    bi_veXpr_categoria DECIMAL(18, 0),
-    bi_veXpr_descuento_promocion DECIMAL(18, 2),
-	bi_veXpr_turno DECIMAL(18,0),
-    FOREIGN KEY (bi_veXpr_tiempo) 		REFERENCES TESLA.BI_TIEMPO(bi_tiem_codigo),
-    FOREIGN KEY (bi_veXpr_categoria) 	REFERENCES TESLA.BI_CATEGORIA(bi_cate_codigo),
-	FOREIGN KEY (bi_veXpr_turno) 	REFERENCES TESLA.BI_TURNO(bi_turno_codigo)
+CREATE TABLE TESLA.BI_HECHO_PUBLICACION (
+    bi_publicacion_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_publicacion_fecha_inicio DECIMAL(18, 0),
+    bi_publicacion_fecha_final DECIMAL(18, 0),
+    bi_publicacion_subRubro DECIMAL(18, 0),
+    bi_publicacion_marca DECIMAL(18, 0),
+    bi_publicacion_stock DECIMAL(18, 0),
+    FOREIGN KEY (bi_publicacion_fecha_inicio) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_publicacion_fecha_final) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_publicacion_subRubro) 	REFERENCES TESLA.BI_SUBRUBRO(bi_subr_id),
+	FOREIGN KEY (bi_publicacion_marca) 	REFERENCES TESLA.BI_MARCA(bi_marca_id),
 );
 
-
-CREATE TABLE TESLA.BI_ENVIO (
-    bi_envi_codigo DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_envi_tiempo DECIMAL(18, 0),
-    bi_envi_sucursal DECIMAL(18, 0),
-    bi_envi_rango_etario_cl DECIMAL(18, 0),
-    bi_envi_ubicacion DECIMAL(18, 0),
-    bi_envi_costo DECIMAL(18, 2),
-    bi_envi_cumplidas DECIMAL(18,0),
-	bi_envi_not_cumplidas DECIMAL(18,0),
-    FOREIGN KEY (bi_envi_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiem_codigo),
-    FOREIGN KEY (bi_envi_sucursal) 			REFERENCES TESLA.BI_SUCURSAL(bi_sucu_numero),
-    FOREIGN KEY (bi_envi_rango_etario_cl) 	REFERENCES TESLA.BI_RANGO_ETARIO(bi_rang_codigo),
-    FOREIGN KEY (bi_envi_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_codigo)
+CREATE TABLE TESLA.BI_HECHO_VENTA (
+    bi_venta_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_venta_ubicacion DECIMAL(18, 0),
+    bi_venta_tiempo DECIMAL(18, 0),
+    bi_venta_rango_horario DECIMAL(18, 0),
+    bi_venta_subRubro decimal(18,0),
+	bi_venta_importe decimal(18,0)
+    FOREIGN KEY (bi_venta_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+    FOREIGN KEY (bi_venta_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_venta_rango_horario) 	REFERENCES TESLA.BI_RANGO_HORARIO_VENTAS(bi_rango_horario_id),
+    FOREIGN KEY (bi_venta_subRubro)			REFERENCES TESLA.BI_SUBRUBRO(bi_subr_id),
 );
 
-
-CREATE TABLE TESLA.BI_PAGO (
-    bi_pago_codigo DECIMAL(18,0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_pago_sucursal DECIMAL(18,0),
-    bi_pago_medio_de_pago DECIMAL(18,0),
+CREATE TABLE TESLA.BI_HECHO_PAGO (
+    bi_pago_id DECIMAL(18,0) 			IDENTITY(1,1) PRIMARY KEY,
     bi_pago_tiempo DECIMAL(18,0),
-    bi_pago_rango_etareo_cl DECIMAL(18,0),
-    bi_pago_monto DECIMAL(18,0),
-    bi_pago_cuota DECIMAL(18,0),
-    bi_pago_descuento_aplicado DECIMAL(18,2),
-    FOREIGN KEY (bi_pago_sucursal) 			REFERENCES TESLA.BI_SUCURSAL(bi_sucu_numero),
-    FOREIGN KEY (bi_pago_rango_etareo_cl) 	REFERENCES TESLA.BI_RANGO_ETARIO(bi_rang_codigo),
-    FOREIGN KEY (bi_pago_cuota) 			REFERENCES TESLA.BI_CUOTA(bi_cuota_codigo),
-    FOREIGN KEY (bi_pago_medio_de_pago) 	REFERENCES TESLA.BI_MEDIO_DE_PAGO(bi_medi_codigo),
-    FOREIGN KEY (bi_pago_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiem_codigo)
+	bi_pago_ubicacion DECIMAL(18,0),
+	bi_pago_tipo_medio_de_pago DECIMAL(18,0),
+    bi_pago_cuotas DECIMAL(18,0),
+    bi_pago_importe DECIMAL(18,2)
+    FOREIGN KEY (bi_pago_tiempo) 				REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_pago_ubicacion) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_pago_tipo_medio_de_pago)	REFERENCES TESLA.BI_TIPO_MEDIO_DE_PAGO(bi_tipo_medio_pago_id),
 );
 GO
+
+CREATE TABLE TESLA.BI_HECHO_ENVIO (
+    bi_envio_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_envio_tiempo DECIMAL(18, 0),
+    bi_envio_ubicacion DECIMAL(18, 0),
+    bi_envio_costo DECIMAL(18, 2),
+    bi_envio_cumplidas DECIMAL(18,0),
+	bi_envi_not_cumplidas DECIMAL(18,0),
+    FOREIGN KEY (bi_envio_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_envio_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id)
+);
+
+CREATE TABLE TESLA.BI_HECHO_FACTURACION (
+    bi_facturacion_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_facturacion_tiempo DECIMAL(18, 0),
+    bi_facturacion_ubicacion DECIMAL(18, 0),
+    bi_facturacion_concepto DECIMAL(18,0),
+    bi_facturacion_total DECIMAL(18,0),
+    FOREIGN KEY (bi_facturacion_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_facturacion_ubicacion) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_facturacion_concepto) 			REFERENCES TESLA.BI_CONCEPTO_FACTURA(bi_conc_id)
+);
 
 
 
@@ -526,24 +531,20 @@ GO
 CREATE PROCEDURE TESLA.bi_migrar_rango_horario_ventas AS
 BEGIN
     INSERT INTO TESLA.BI_RANGO_HORARIO_VENTAS(bi_rango_horario_inicio, bi_rango_horario_final)
-    VALUES (0,6),
-           (6,12),
-           (12,18),
-		   (18,0)
-END
+    VALUES ('00:00 - 06:00'),
+           ('06:00 - 12:00'),
+		   ('12:00 - 18:00'),
+		   ('18:00 - 00:00')
+	END
 GO
 --DIMENSION MEDIO_DE_PAGO 
 -- TODO
 CREATE PROCEDURE TESLA.bi_migrar_tipo_medio_de_pago AS
 BEGIN
 	INSERT INTO TESLA.BI_TIPO_MEDIO_DE_PAGO(bi_tipo_medio_pago_descripcion)
-	SELECT DISTINCT
-		medi_codigo,
-		tipo_medio_descripcion,
-		medi_descripcion
-	FROM TESLA.MEDIO_DE_PAGO
-	LEFT JOIN TIPO_MEDIO_DE_PAGO
-		ON tipo_medio_codigo = medi_codigo
+	SELECT
+		tipo_medio_de_pago_descripcion
+	FROM TESLA.TIPO_MEDIO_DE_PAGO
 END
 GO
 
@@ -582,6 +583,17 @@ END
 GO
 
 
+--DIMENSION CONCEPTO FACTURA
+CREATE PROCEDURE TESLA.bi_migrar_concepto_factura AS
+BEGIN
+    INSERT INTO TESLA.BI_CONCEPTO_FACTURA(bi_conc_descripcion)
+    SELECT DISTINCT 
+		conc_descripcion
+    FROM TESLA.CONCEPTO_FACTURA
+END
+GO
+
+
 -----------------------------------------------------------------
 -----------(4.1)EXEC DIMENSIONES---------------------------------
 -----------------------------------------------------------------
@@ -598,6 +610,38 @@ EXEC TESLA.bi_migrar_turno;
 GO
 -----------------------------------------------------------------
 
+SELECT publi_fecha_inicio, publi_fecha_fin,DATEDIFF(DAY,publi_fecha_inicio, publi_fecha_fin) FROM TESLA.PUBLICACION
+WHERE MONTH(publi_fecha_fin) > MONTH(publi_fecha_inicio)
+order by 3 desc
+--- MIGRAR PUBLICACION
+CREATE PROCEDURE TESLA.bi_migrar_publicacion AS
+BEGIN
+    INSERT INTO TESLA.BI_HECHO_PUBLICACION(bi_publicacion_fecha_inicio, bi_publicacion_fecha_final, bi_publicacion_subRubro,
+											bi_publicacion_marca, bi_publicacion_stock
+											)
+    SELECT 
+        TESLA.ID_TIEMPO(publi_fecha_inicio),
+		TESLA.ID_TIEMPO(publi_fecha_fin),
+
+        tick_sucursal,
+        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
+        TESLA.ID_UBICACION(loca_nombre),
+        SUM(CAST(envi_costo AS DECIMAL(18,2))),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+    FROM TESLA.PUBLICACION
+    LEFT JOIN TESLA.ENVIO e
+        ON envi_codigo_ticket = tick_codigo
+    LEFT JOIN TESLA.CLIENTE
+        ON clie_codigo = envi_cliente
+    LEFT JOIN TESLA.LOCALIDAD
+        ON loca_codigo = clie_localidad
+    GROUP BY      TESLA.ID_TIEMPO(tick_fecha_y_hora),
+                tick_sucursal,
+                TESLA.RANGO_EDAD(clie_fecha_nacimiento),
+                TESLA.ID_UBICACION(loca_nombre)
+END
+GO
 
 --- MIGRAR ENVIO
 CREATE PROCEDURE TESLA.bi_migrar_envio AS
@@ -815,7 +859,7 @@ GO
 CREATE VIEW TESLA.VW_CANTIDAD_VENTAS_X_TURNO AS
     SELECT 
         bi_ubic_localidad AS Localidad,
-        bi_tiem_anio AS Año,
+        bi_tiem_anio AS Aï¿½o,
         bi_tiem_mes AS Mes,
 		bi_turno_rango,
         COUNT(bi_vent_codigo) AS [Cantidad de ventas]
@@ -835,7 +879,7 @@ GO
 -- 5
 CREATE VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO AS
     SELECT 
-		bi_tiem_anio AS Año,
+		bi_tiem_anio AS Aï¿½o,
 		bi_tiem_mes AS Mes,
 		( ( SUM(bi_vent_descuento_promocion) ) / ( COUNT(bi_vent_codigo) ) ) as porcentaje_desc_aplicado
 		
@@ -869,7 +913,7 @@ GO
 CREATE VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS AS
     SELECT
         ( SUM(bi_envi_cumplidas) / ( SUM(bi_envi_cumplidas) + SUM(bi_envi_not_cumplidas) ) * 100 ) AS 'Porcentaje_Cumplimiento_Envio',
-        bi_tiem_anio AS 'Año',
+        bi_tiem_anio AS 'Aï¿½o',
         bi_tiem_mes AS 'Mes',
         bi_sucu_numero AS 'Sucursal'
 
@@ -888,7 +932,7 @@ CREATE VIEW TESLA.VW_CANTIDAD_DE_ENVIOS_POR_RANGO_ETARIO_DE_CLIENTES AS
         COUNT(bi_envi_codigo) AS 'Cantidad_De_Envios',
         bi_rang_nombre AS 'Rango_Etario',
     	bi_tiem_cuatrimestre 'Cuatrimestre',
-        bi_tiem_anio 'Año'
+        bi_tiem_anio 'Aï¿½o'
 
     FROM TESLA.BI_ENVIO
     INNER JOIN BI_RANGO_ETARIO 
