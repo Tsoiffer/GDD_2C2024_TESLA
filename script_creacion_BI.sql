@@ -79,46 +79,50 @@ GO
 
 IF OBJECT_ID('TESLA.bi_migrar_tiempo') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_tiempo;
+GO
 
 IF OBJECT_ID('TESLA.bi_migrar_ubicacion') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_ubicacion;
-
-IF OBJECT_ID('TESLA.bi_migrar_rango_etario') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_rango_etario;
-
-IF OBJECT_ID('TESLA.bi_migrar_tipo_caja') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_tipo_caja;
-
-IF OBJECT_ID('TESLA.bi_migrar_medio_de_pago') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_medio_de_pago;
-
-IF OBJECT_ID('TESLA.bi_migrar_cuota') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_cuota;
-  
-IF OBJECT_ID('TESLA.bi_migrar_categoria') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_categoria;
- 
-IF OBJECT_ID('TESLA.bi_migrar_turno') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_turno;
 GO
 
-IF OBJECT_ID('TESLA.bi_migrar_venta_x_producto') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_venta_x_producto;
+IF OBJECT_ID('TESLA.bi_migrar_rango_etario_clientes') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_rango_etario_clientes;
 GO
 
-IF OBJECT_ID('TESLA.bi_migrar_venta') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_venta;
+IF OBJECT_ID('TESLA.bi_migrar_rango_horario_ventas') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_rango_horario_ventas;
 GO
 
-IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
+IF OBJECT_ID('TESLA.bi_migrar_tipo_medio_de_pago') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_tipo_medio_de_pago;
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_tipo_envio') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_tipo_envio;
+GO 
+
+IF OBJECT_ID('TESLA.bi_migrar_subrubro') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_subrubro;
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_marca') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_marca;
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_concepto_factura') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_concepto_factura;
+GO
+
+/*IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_pago;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_envio') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_envio;
-GO
+GO*/
 
 --DROP VIEWS
+/* TODO VIWS
 IF OBJECT_ID('TESLA.VW_TICKET_PROMEDIO_MENSUAL') IS NOT NULL
   DROP VIEW TESLA.VW_TICKET_PROMEDIO_MENSUAL;
   
@@ -155,7 +159,7 @@ IF OBJECT_ID('TESLA.VW_PROMEDIO_IMPORTE_CUOTA') IS NOT NULL
 IF OBJECT_ID('TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO') IS NOT NULL
   DROP VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO;
 GO
-
+*/
 
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -326,6 +330,7 @@ BEGIN
 END
 GO
 
+/* TODO VER FUNCIONES
 --Dado un subrubro y un rubro devuelve un id_subrubro
 create FUNCTION TESLA.OBTENER_ID_SUBRUBRO(@subrubro varchar(50), @rubro varchar(50)) RETURNS DECIMAL(18,0) AS
 BEGIN
@@ -451,6 +456,7 @@ BEGIN
 END
 GO
 
+*/
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
@@ -534,7 +540,6 @@ BEGIN
 	END
 GO
 --DIMENSION MEDIO_DE_PAGO 
--- TODO
 CREATE PROCEDURE TESLA.bi_migrar_tipo_medio_de_pago AS
 BEGIN
 	INSERT INTO TESLA.BI_TIPO_MEDIO_DE_PAGO(bi_tipo_medio_pago_descripcion)
@@ -594,17 +599,23 @@ GO
 -----------(4.1)EXEC DIMENSIONES---------------------------------
 -----------------------------------------------------------------
 
-EXEC TESLA.bi_migrar_sucursal;
 EXEC TESLA.bi_migrar_tiempo;
 EXEC TESLA.bi_migrar_ubicacion;
-EXEC TESLA.bi_migrar_rango_etario;
-EXEC TESLA.bi_migrar_tipo_caja;
-EXEC TESLA.bi_migrar_medio_de_pago;
-EXEC TESLA.bi_migrar_cuota;
-EXEC TESLA.bi_migrar_categoria;
-EXEC TESLA.bi_migrar_turno;
+EXEC TESLA.bi_migrar_rango_etario_clientes;
+EXEC TESLA.bi_migrar_rango_horario_ventas;
+EXEC TESLA.bi_migrar_tipo_medio_de_pago;
+EXEC TESLA.bi_migrar_tipo_envio;
+EXEC TESLA.bi_migrar_subrubro;
+EXEC TESLA.bi_migrar_marca;
+EXEC TESLA.bi_migrar_concepto_factura;
 GO
+
 -----------------------------------------------------------------
+-----------(4.2)EXEC MIGRACIONES---------------------------------
+-----------------------------------------------------------------
+
+/*
+
 
 SELECT publi_fecha_inicio, publi_fecha_fin,DATEDIFF(DAY,publi_fecha_inicio, publi_fecha_fin) FROM TESLA.PUBLICACION
 WHERE MONTH(publi_fecha_fin) > MONTH(publi_fecha_inicio)
@@ -639,7 +650,6 @@ BEGIN
 END
 GO
 
-SELECT * FROM TESLA.LOCALIDAD order by loc_nombre
 
 --- MIGRAR VENTA
 CREATE PROCEDURE TESLA.bi_migrar_venta AS
@@ -811,24 +821,28 @@ BEGIN
 END
 
 GO
+*/
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(5)EXECUTE FACTS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
+/*
+TODO EXECUTE FACTS
 EXEC TESLA.bi_migrar_envio;
 EXEC TESLA.bi_migrar_pago;
 EXEC TESLA.bi_migrar_venta_x_producto;
 EXEC TESLA.bi_migrar_venta;
 
 GO
-
+*/
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(6)VISTAS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- 1
 
+/*
+TODO VISTAS
 CREATE VIEW TESLA.VW_TICKET_PROMEDIO_MENSUAL AS
 	SELECT 
 		bi_ubic_localidad AS Localidad,
@@ -1040,3 +1054,4 @@ AS
 
 	GROUP BY bi_tiem_cuatrimestre
 GO
+*/
