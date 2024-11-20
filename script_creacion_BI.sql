@@ -49,30 +49,22 @@ IF OBJECT_ID('TESLA.BI_TIEMPO','U') IS NOT NULL
     DROP TABLE TESLA.BI_TIEMPO;
 
 ---DROP FUNCIONES
-
-IF OBJECT_ID('TESLA.OBTENER_CODIGO_CATEGORIA') IS NOT NULL
-  DROP FUNCTION TESLA.OBTENER_CODIGO_CATEGORIA;
-GO
-
-IF OBJECT_ID('TESLA.OBTENER_CODIGO_TURNO') IS NOT NULL
-  DROP FUNCTION TESLA.OBTENER_CODIGO_TURNO;
-GO
-
 IF OBJECT_ID('TESLA.OBTENER_CUATRIMESTRE') IS NOT NULL
   DROP FUNCTION TESLA.OBTENER_CUATRIMESTRE;
 GO
 
-IF OBJECT_ID('TESLA.ID_TIEMPO') IS NOT NULL
+IF OBJECT_ID('TESLA.OBTENER_ID_TIEMPO') IS NOT NULL
   DROP FUNCTION TESLA.ID_TIEMPO;
 GO
 
-IF OBJECT_ID('TESLA.RANGO_EDAD') IS NOT NULL
+IF OBJECT_ID('TESLA.OBTENER_ID_UBICACION') IS NOT NULL
+  DROP FUNCTION TESLA.ID_UBICACION;
+GO
+
+/*IF OBJECT_ID('TESLA.RANGO_EDAD') IS NOT NULL
   DROP FUNCTION TESLA.RANGO_EDAD;
 GO
 
-IF OBJECT_ID('TESLA.ID_UBICACION') IS NOT NULL
-  DROP FUNCTION TESLA.ID_UBICACION;
-GO
 
 IF OBJECT_ID('TESLA.CUMPLIO_HORARIO') IS NOT NULL
   DROP FUNCTION TESLA.CUMPLIO_HORARIO;
@@ -81,14 +73,9 @@ GO
 IF OBJECT_ID('TESLA.ID_CUOTA') IS NOT NULL
   DROP FUNCTION TESLA.ID_CUOTA;
 GO
-
-IF OBJECT_ID('TESLA.OBTENER_CODIGO_TIEMPO') IS NOT NULL
-  DROP FUNCTION TESLA.OBTENER_CODIGO_TIEMPO;
-GO
+*/
 
 --DROP PROCEDURES
-IF OBJECT_ID('TESLA.bi_migrar_sucursal') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_sucursal;
 
 IF OBJECT_ID('TESLA.bi_migrar_tiempo') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_tiempo;
@@ -312,33 +299,45 @@ END
 GO
 
 --Dado una localidad devuelve un id_bi_ubicacion
-CREATE FUNCTION TESLA.ID_UBICACION(@localidad VARCHAR(255)) RETURNS DECIMAL(18,0) AS
+CREATE FUNCTION TESLA.OBTENER_ID_UBICACION(@localidad VARCHAR(255), @provincia varchar(255)) RETURNS DECIMAL(18,0) AS
 BEGIN
 	DECLARE @id_ubicacion DECIMAL(18,0);
 
-	SELECT @id_ubicacion = bi_ubic_codigo
+	SELECT @id_ubicacion = bi_ubic_id
 	FROM TESLA.BI_UBICACION
-	WHERE bi_ubic_localidad = @localidad
+	WHERE bi_ubic_localidad = @localidad 
+	and bi_ubic_provincia = @provincia
 
 	RETURN @id_ubicacion
 END
 GO
---Dado una fecha devuelve un id_tiempo
-create FUNCTION TESLA.ID_TIEMPO(@fecha DATETIME) RETURNS DECIMAL(18,0) AS
+
+--Dado un año y un mes devuelve un id_tiempo
+create FUNCTION TESLA.OBTENER_ID_TIEMPO(@anio int, @mes int) RETURNS DECIMAL(18,0) AS
 BEGIN
-    DECLARE @anio DECIMAL(4,0),
-            @mes DECIMAL(2,0),
-            @id_tiempo DECIMAL(18,0)
+    DECLARE @id_tiempo DECIMAL(18,0)
 
-    SET @anio  = DATEPART(yyyy, @fecha)
-    SET @mes  = DATEPART(mm, @fecha)
-
-    SELECT @id_tiempo = bi_tiem_codigo
+    SELECT @id_tiempo = bi_tiempo_id
     FROM TESLA.BI_TIEMPO
-    WHERE TESLA.BI_TIEMPO.bi_tiem_anio = @anio
-    AND TESLA.BI_TIEMPO.bi_tiem_mes = @mes
+    WHERE TESLA.BI_TIEMPO.bi_tiempo_anio = @anio
+    AND TESLA.BI_TIEMPO.bi_tiempo_mes = @mes
 
     RETURN @id_tiempo
+END
+GO
+
+--Dado un subrubro y un rubro devuelve un id_subrubro
+create FUNCTION TESLA.OBTENER_ID_SUBRUBRO(@subrubro varchar(50), @rubro varchar(50)) RETURNS DECIMAL(18,0) AS
+BEGIN
+
+          DECLARE @id_subrubro DECIMAL(18,0)
+
+    SELECT @id_subrubro = sb.bi_subr_id
+    FROM TESLA.BI_SUBRUBRO sb
+	where sb.bi_subr_descripcion = @subrubro
+	and sb.bi_subr_rubro_descripcion = @rubro
+
+    RETURN @id_subrubro
 END
 GO
 
@@ -358,24 +357,24 @@ BEGIN
                   END;
 
 	IF @EDAD BETWEEN 0 AND 24
-		SELECT @id_rango_edad = bi_rang_codigo 
-		FROM TESLA.BI_RANGO_ETARIO 
-		WHERE bi_rang_nombre = '< 25'
+		SELECT @id_rango_edad = rec.bi_rango_etario_id
+		FROM TESLA.BI_RANGO_ETARIO_CLIENTES rec
+		WHERE rec.bi_rango_etario_nombre = '< 25'
 		
 	ELSE IF @EDAD BETWEEN 25 AND 35
-		SELECT @id_rango_edad = bi_rang_codigo 
-		FROM TESLA.BI_RANGO_ETARIO 
-		WHERE bi_rang_nombre = '25 - 35'
+		SELECT @id_rango_edad = rec.bi_rango_etario_id
+		FROM TESLA.BI_RANGO_ETARIO_CLIENTES rec
+		WHERE rec.bi_rango_etario_nombre = '25 - 35'
 	
 	ELSE IF @EDAD BETWEEN 35 AND 50
-		SELECT @id_rango_edad = bi_rang_codigo 
-		FROM TESLA.BI_RANGO_ETARIO 
-		WHERE bi_rang_nombre = '35 - 50'
+		SELECT @id_rango_edad = rec.bi_rango_etario_id 
+		FROM TESLA.BI_RANGO_ETARIO_CLIENTES rec
+		WHERE rec.bi_rango_etario_nombre = '35 - 50'
 		
 	ELSE
-		SELECT @id_rango_edad = bi_rang_codigo 
-		FROM TESLA.BI_RANGO_ETARIO
-		WHERE bi_rang_nombre = '> 50'
+		SELECT @id_rango_edad = rec.bi_rango_etario_id 
+		FROM TESLA.BI_RANGO_ETARIO_CLIENTES rec
+		WHERE rec.bi_rango_etario_nombre = '> 50'
 
 
 	RETURN @id_rango_edad;
@@ -400,9 +399,6 @@ BEGIN
     RETURN @codigo_turno;
 END;
 GO
-
-
-
 
 --Dado una hora de finalizacion y una fecha con hora de entrega estimada devuelve "CUMPLIO" o "NO CUMPLIO"
 CREATE FUNCTION TESLA.CUMPLIO_HORARIO(@envi_hora_fin DECIMAL(18,0), @envi_fecha_y_hora_entrega DATETIME) RETURNS VARCHAR(255) AS
@@ -643,6 +639,26 @@ BEGIN
 END
 GO
 
+SELECT * FROM TESLA.LOCALIDAD order by loc_nombre
+
+--- MIGRAR VENTA
+CREATE PROCEDURE TESLA.bi_migrar_venta AS
+BEGIN
+    INSERT INTO TESLA.BI_HECHO_VENTA(bi_venta_tiempo, bi_venta_ubicacion, bi_venta_subRubro, bi_venta_rango_horario, bi_venta_importe)
+    SELECT 
+        ,
+        tick_sucursal,
+        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
+        TESLA.ID_UBICACION(loca_nombre),
+        SUM(CAST(envi_costo AS DECIMAL(18,2))),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+    FROM TESLA.VENTA v
+    JOIN TESLA.DETALLE_VENTA dv on v.vent_id = dv.det_vent_venta
+	join PUBLICACION p on dv.det_vent_publicacion = p.publi_id
+
+GO
+
 --- MIGRAR ENVIO
 CREATE PROCEDURE TESLA.bi_migrar_envio AS
 BEGIN
@@ -674,42 +690,59 @@ GO
 
 CREATE PROCEDURE TESLA.bi_migrar_pago AS
 BEGIN
-    INSERT INTO TESLA.BI_PAGO (bi_pago_sucursal,
-                                    bi_pago_medio_de_pago,
+    INSERT INTO TESLA.BI_HECHO_PAGO(bi_pago_tipo_medio_de_pago,
                                     bi_pago_tiempo,
-                                    bi_pago_rango_etareo_cl,
-                                    bi_pago_cuota,
-                                    bi_pago_monto,
-                                    bi_pago_descuento_aplicado)
+                                    bi_pago_ubicacion,
+                                    bi_pago_importe,
+                                    bi_pago_cuotas
+                                    )
     SELECT DISTINCT
-        tick_sucursal,
-        medi_codigo,
-        TESLA.ID_TIEMPO(tick_fecha_y_hora),
-        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-        TESLA.ID_CUOTA(deta_cuotas),
-        SUM(tick_total_venta),
-        SUM(tick_total_descuento_medio_pago)
+        (SELECT bimp.bi_tipo_medio_pago_id FROM TESLA.BI_TIPO_MEDIO_DE_PAGO bimp
+		where tmp.tipo_medio_de_pago_descripcion = bimp.bi_tipo_medio_pago_descripcion),
+        TESLA.OBTENER_ID_TIEMPO(YEAR(p.pago_fecha), MONTH(p.pago_fecha)),
+        TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre)--,
+        --SUM(tick_total_venta),
+        --SUM(tick_total_descuento_medio_pago)
 
-        from TESLA.TICKET
-        INNER JOIN TESLA.CLIENTE
-            ON clie_codigo = tick_cliente
-        INNER JOIN TESLA.DETALLE_PAGO
-            ON deta_cliente = clie_codigo
-        INNER JOIN TESLA.PAGO
-            ON pago_detalle = deta_codigo
-        INNER JOIN TESLA.MEDIO_DE_PAGO
-            ON medi_codigo = pago_medio_pago
+        FROM TESLA.PAGO p
+		join TESLA.MEDIO_DE_PAGO mp on p.pago_medio = mp.medio_de_pago_id
+		JOIN TESLA.TIPO_MEDIO_DE_PAGO tmp on tmp.tipo_medio_de_pago_id = mp.medio_de_pago_tipo
+		join TESLA.VENTA v on p.pago_venta = v.vent_id
+		join TESLA.ENVIO e on e.env_venta = v.vent_id
+		join TESLA.DOMICILIO d on e.env_domicilio = d.domi_id
+		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
+		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
 
-
-        GROUP BY     tick_sucursal,
-                     medi_codigo,
-                    TESLA.ID_TIEMPO(tick_fecha_y_hora),
-                    TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-                    TESLA.ID_CUOTA(deta_cuotas)
+		group by tmp.tipo_medio_de_pago_descripcion, YEAR(p.pago_fecha), MONTH(p.pago_fecha), 
+				l.loc_nombre, pv.prov_nombre
 
 END
 GO
 
+
+ SELECT DISTINCT
+        (SELECT bimp.bi_tipo_medio_pago_id FROM TESLA.BI_TIPO_MEDIO_DE_PAGO bimp
+		where tmp.tipo_medio_de_pago_descripcion = bimp.bi_tipo_medio_pago_descripcion),
+        YEAR(p.pago_fecha), 
+		MONTH(p.pago_fecha),
+        l.loc_nombre, 
+		pv.prov_nombre--,
+        --SUM(tick_total_venta),
+        --SUM(tick_total_descuento_medio_pago)
+
+        FROM TESLA.PAGO p
+		join TESLA.MEDIO_DE_PAGO mp on p.pago_medio = mp.medio_de_pago_id
+		JOIN TESLA.TIPO_MEDIO_DE_PAGO tmp on tmp.tipo_medio_de_pago_id = mp.medio_de_pago_tipo
+		join TESLA.VENTA v on p.pago_venta = v.vent_id
+		join TESLA.ENVIO e on e.env_venta = v.vent_id
+		join TESLA.DOMICILIO d on e.env_domicilio = d.domi_id
+		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
+		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
+
+		group by tmp.tipo_medio_de_pago_descripcion, YEAR(p.pago_fecha), MONTH(p.pago_fecha), 
+				l.loc_nombre, pv.prov_nombre
+
+SELECT * FROM TESLA.LOCALIDAD ORDER BY loc_nombre
 --PROCEDURE 
 --DIMENSION VENTAXPRODUCTO
 
