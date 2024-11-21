@@ -54,21 +54,26 @@ IF OBJECT_ID('TESLA.OBTENER_CUATRIMESTRE') IS NOT NULL
 GO
 
 IF OBJECT_ID('TESLA.OBTENER_ID_TIEMPO') IS NOT NULL
-  DROP FUNCTION TESLA.ID_TIEMPO;
+  DROP FUNCTION TESLA.OBTENER_ID_TIEMPO;
 GO
 
 IF OBJECT_ID('TESLA.OBTENER_ID_UBICACION') IS NOT NULL
-  DROP FUNCTION TESLA.ID_UBICACION;
+  DROP FUNCTION TESLA.OBTENER_ID_UBICACION;
 GO
 
+IF OBJECT_ID('TESLA.CUMPLIO_HORARIO') IS NOT NULL
+  DROP FUNCTION TESLA.CUMPLIO_HORARIO;
+GO
+
+IF OBJECT_ID('TESLA.OBTENER_ID_UBICACION_VENDEDOR') IS NOT NULL
+  DROP FUNCTION TESLA.OBTENER_ID_UBICACION_VENDEDOR;
+GO
 /*IF OBJECT_ID('TESLA.RANGO_EDAD') IS NOT NULL
   DROP FUNCTION TESLA.RANGO_EDAD;
 GO
 
 
-IF OBJECT_ID('TESLA.CUMPLIO_HORARIO') IS NOT NULL
-  DROP FUNCTION TESLA.CUMPLIO_HORARIO;
-GO
+
 
 IF OBJECT_ID('TESLA.ID_CUOTA') IS NOT NULL
   DROP FUNCTION TESLA.ID_CUOTA;
@@ -76,7 +81,6 @@ GO
 */
 
 --DROP PROCEDURES
-
 IF OBJECT_ID('TESLA.bi_migrar_tiempo') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_tiempo;
 GO
@@ -113,13 +117,17 @@ IF OBJECT_ID('TESLA.bi_migrar_concepto_factura') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_concepto_factura;
 GO
 
-/*IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
+IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_pago;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_envio') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_envio;
-GO*/
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_facturacion') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_facturacion;
+GO
 
 --DROP VIEWS
 /* TODO VIWS
@@ -188,35 +196,34 @@ CREATE TABLE TESLA.BI_RANGO_ETARIO_CLIENTES (
 
 CREATE TABLE TESLA.BI_RANGO_HORARIO_VENTAS (
     bi_rango_horario_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
-    bi_rango_horario_inicio DECIMAL(18,2),
-	bi_rango_horario_final DECIMAL(18,2)
+    bi_rango_horario_nombre VARCHAR(100)
 );
 
 
 
 CREATE TABLE TESLA.BI_TIPO_MEDIO_DE_PAGO (
-    bi_tipo_medio_pago_id DECIMAL(18, 0) PRIMARY KEY,
+    bi_tipo_medio_pago_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
 	bi_tipo_medio_pago_descripcion VARCHAR(255),
 );
 
 CREATE TABLE TESLA.BI_TIPO_ENVIO (
-    bi_tipo_envio_id DECIMAL(18, 0) PRIMARY KEY,
+    bi_tipo_envio_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
 	bi_tipo_envio_descripcion VARCHAR(255),
 );
 
 CREATE TABLE TESLA.BI_SUBRUBRO (
-    bi_subr_id DECIMAL(18, 0) PRIMARY KEY,
+    bi_subr_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
 	bi_subr_descripcion VARCHAR(255),
 	bi_subr_rubro_descripcion VARCHAR(255)
 );
 
 CREATE TABLE TESLA.BI_MARCA (
-    bi_marca_id DECIMAL(18, 0) PRIMARY KEY,
+    bi_marca_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
 	bi_marca_descripcion VARCHAR(255)
 );
 
 CREATE TABLE TESLA.BI_CONCEPTO_FACTURA (
-    bi_conc_id DECIMAL(18, 0) PRIMARY KEY,
+    bi_conc_id DECIMAL(18, 0) IDENTITY(1,1) PRIMARY KEY,
 	bi_conc_descripcion VARCHAR(255)
 );
 
@@ -253,7 +260,6 @@ CREATE TABLE TESLA.BI_HECHO_PAGO (
     bi_pago_tiempo DECIMAL(18,0),
 	bi_pago_ubicacion DECIMAL(18,0),
 	bi_pago_tipo_medio_de_pago DECIMAL(18,0),
-    bi_pago_cuotas DECIMAL(18,0),
     bi_pago_importe DECIMAL(18,2)
     FOREIGN KEY (bi_pago_tiempo) 				REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
     FOREIGN KEY (bi_pago_ubicacion) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
@@ -282,7 +288,7 @@ CREATE TABLE TESLA.BI_HECHO_FACTURACION (
     FOREIGN KEY (bi_facturacion_ubicacion) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
 	FOREIGN KEY (bi_facturacion_concepto) 			REFERENCES TESLA.BI_CONCEPTO_FACTURA(bi_conc_id)
 );
-
+GO
 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -329,6 +335,42 @@ BEGIN
     RETURN @id_tiempo
 END
 GO
+
+--Dado una hora de finalizacion y una fecha con hora de entrega estimada devuelve "CUMPLIO" o "NO CUMPLIO"
+CREATE FUNCTION TESLA.CUMPLIO_HORARIO(@hora_entrega_programada DECIMAL(18,0), @envio_fecha_entrega DATETIME) RETURNS VARCHAR(255) AS
+BEGIN
+	DECLARE @hora_entrega_real DECIMAL(18,0);
+	DECLARE @resultado VARCHAR(255); 
+	SET @hora_entrega_real = DATEPART(HOUR,@envio_fecha_entrega);
+
+	IF @hora_entrega_real > @hora_entrega_programada
+		SET @resultado = 'NO CUMPLIO'
+	ELSE
+		SET @resultado = 'CUMPLIO'
+
+	RETURN @resultado;
+END
+GO
+
+--Dado un id_vendedor devuelve un id_bi_ubicacion
+CREATE FUNCTION TESLA.OBTENER_ID_UBICACION_VENDEDOR(@vendedor_id DECIMAL(18,0)) RETURNS DECIMAL(18,0) AS
+BEGIN
+
+    DECLARE @localidad VARCHAR(255);
+    DECLARE @provincia varchar(255);
+    SELECT
+        @localidad  = l.loc_nombre,
+        @provincia = pv.prov_nombre
+    FROM TESLA.USUARIO v
+    JOIN TESLA.DOMICILIO d ON d.domi_usuario = v.usr_vendedor
+    join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
+    join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
+        WHERE v.usr_vendedor = @vendedor_id
+
+    RETURN TESLA.OBTENER_ID_UBICACION(@localidad,@provincia )
+END
+GO
+
 
 /* TODO VER FUNCIONES
 --Dado un subrubro y un rubro devuelve un id_subrubro
@@ -404,22 +446,9 @@ BEGIN
     RETURN @codigo_turno;
 END;
 GO
+*/
 
---Dado una hora de finalizacion y una fecha con hora de entrega estimada devuelve "CUMPLIO" o "NO CUMPLIO"
-CREATE FUNCTION TESLA.CUMPLIO_HORARIO(@envi_hora_fin DECIMAL(18,0), @envi_fecha_y_hora_entrega DATETIME) RETURNS VARCHAR(255) AS
-BEGIN
-	DECLARE @hora_fin_programada DECIMAL(18,0);
-	DECLARE @resultado VARCHAR(255); 
-	SET @hora_fin_programada = DATEPART(HOUR,@envi_fecha_y_hora_entrega);
-
-	IF @envi_hora_fin > @hora_fin_programada
-		SET @resultado = 'NO CUMPLIO'
-	ELSE
-		SET @resultado = 'CUMPLIO'
-
-	RETURN @resultado;
-END
-GO
+/*
 -- Dado una cantidad de cuotas devuelve un codigo de cuota
 CREATE FUNCTION TESLA.ID_CUOTA(@deta_cuotas DECIMAL(18,0)) RETURNS DECIMAL(18,0) AS
 BEGIN
@@ -461,46 +490,105 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
+GO
 --DIMENSION TIEMPO
 CREATE PROCEDURE TESLA.bi_migrar_tiempo AS
 BEGIN
-	INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio,bi_tiempo_mes,bi_tiempo_cuatrimestre)
-	SELECT DISTINCT
-		YEAR(publi_fecha_inicio),
-		MONTH(publi_fecha_inicio),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_inicio))
-	FROM TESLA.PUBLICACION
-	UNION ALL
-	SELECT DISTINCT
-		YEAR(publi_fecha_fin),
-		MONTH(publi_fecha_fin),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_fin))
-	FROM TESLA.PUBLICACION
-	UNION ALL
-	SELECT DISTINCT
-		YEAR(vent_fecha),
-		MONTH(vent_fecha),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(vent_fecha))
-	FROM TESLA.VENTA
-	UNION ALL
-	SELECT DISTINCT
-		YEAR(env_fecha_programada),
-		MONTH(env_fecha_programada),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_programada))
-	FROM TESLA.ENVIO
-	UNION ALL
-	SELECT DISTINCT
-		YEAR(env_fecha_entrega),
-		MONTH(env_fecha_entrega),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_entrega))
-	FROM TESLA.ENVIO
-	UNION ALL
-	SELECT DISTINCT
-		YEAR(pago_fecha),
-		MONTH(pago_fecha),
-		TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
-	FROM TESLA.PAGO
+    -- Insertar desde TESLA.PUBLICACION (publi_fecha_inicio)
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(publi_fecha_inicio),
+        MONTH(publi_fecha_inicio),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_inicio))
+    FROM TESLA.PUBLICACION
+    WHERE publi_fecha_inicio IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(publi_fecha_inicio)
+            AND bt.bi_tiempo_mes = MONTH(publi_fecha_inicio)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_inicio))
+      );
+
+    -- Insertar desde TESLA.PUBLICACION (publi_fecha_fin)
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(publi_fecha_fin),
+        MONTH(publi_fecha_fin),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_fin))
+    FROM TESLA.PUBLICACION
+    WHERE publi_fecha_fin IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(publi_fecha_fin)
+            AND bt.bi_tiempo_mes = MONTH(publi_fecha_fin)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(publi_fecha_fin))
+      );
+
+    -- Insertar desde TESLA.VENTA
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(vent_fecha),
+        MONTH(vent_fecha),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(vent_fecha))
+    FROM TESLA.VENTA
+    WHERE vent_fecha IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(vent_fecha)
+            AND bt.bi_tiempo_mes = MONTH(vent_fecha)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(vent_fecha))
+      );
+
+    -- Insertar desde TESLA.ENVIO (env_fecha_programada)
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(env_fecha_programada),
+        MONTH(env_fecha_programada),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_programada))
+    FROM TESLA.ENVIO
+    WHERE env_fecha_programada IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(env_fecha_programada)
+            AND bt.bi_tiempo_mes = MONTH(env_fecha_programada)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_programada))
+      );
+
+    -- Insertar desde TESLA.ENVIO (env_fecha_entrega)
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(env_fecha_entrega),
+        MONTH(env_fecha_entrega),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_entrega))
+    FROM TESLA.ENVIO
+    WHERE env_fecha_entrega IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(env_fecha_entrega)
+            AND bt.bi_tiempo_mes = MONTH(env_fecha_entrega)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_entrega))
+      );
+
+    -- Insertar desde TESLA.PAGO
+    INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
+    SELECT DISTINCT
+        YEAR(pago_fecha),
+        MONTH(pago_fecha),
+        TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
+    FROM TESLA.PAGO
+    WHERE pago_fecha IS NOT NULL
+      AND NOT EXISTS (
+          SELECT 1
+          FROM TESLA.BI_TIEMPO bt
+          WHERE bt.bi_tiempo_anio = YEAR(pago_fecha)
+            AND bt.bi_tiempo_mes = MONTH(pago_fecha)
+            AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
+      );
 END
 GO
 
@@ -512,7 +600,7 @@ BEGIN
 		prov_nombre,
 		loc_nombre
 	FROM TESLA.LOCALIDAD
-	LEFT JOIN TESLA.PROVINCIA
+	 JOIN TESLA.PROVINCIA
 		ON prov_id = loc_provincia
 END
 GO
@@ -532,7 +620,7 @@ GO
 --DIMENSION RANGO HORARIO VENTAS
 CREATE PROCEDURE TESLA.bi_migrar_rango_horario_ventas AS
 BEGIN
-    INSERT INTO TESLA.BI_RANGO_HORARIO_VENTAS(bi_rango_horario_inicio, bi_rango_horario_final)
+    INSERT INTO TESLA.BI_RANGO_HORARIO_VENTAS(bi_rango_horario_nombre)
     VALUES ('00:00 - 06:00'),
            ('06:00 - 12:00'),
 		   ('12:00 - 18:00'),
@@ -668,32 +756,26 @@ BEGIN
 	join PUBLICACION p on dv.det_vent_publicacion = p.publi_id
 
 GO
-
+*/
 --- MIGRAR ENVIO
 CREATE PROCEDURE TESLA.bi_migrar_envio AS
 BEGIN
-    INSERT INTO TESLA.BI_ENVIO (    bi_envi_tiempo, bi_envi_sucursal, bi_envi_rango_etario_cl, bi_envi_ubicacion,
-                                        bi_envi_costo, bi_envi_cumplidas, bi_envi_not_cumplidas)
+    INSERT INTO TESLA.BI_HECHO_ENVIO(bi_envio_tiempo , bi_envio_ubicacion, bi_envio_costo, bi_envio_cumplidas, bi_envi_not_cumplidas)
     SELECT 
-        TESLA.ID_TIEMPO(tick_fecha_y_hora),
-        tick_sucursal,
-        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-        TESLA.ID_UBICACION(loca_nombre),
-        SUM(CAST(envi_costo AS DECIMAL(18,2))),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
-    FROM TESLA.TICKET
-    LEFT JOIN TESLA.ENVIO e
-        ON envi_codigo_ticket = tick_codigo
-    LEFT JOIN TESLA.CLIENTE
-        ON clie_codigo = envi_cliente
-    LEFT JOIN TESLA.LOCALIDAD
-        ON loca_codigo = clie_localidad
-    GROUP BY      TESLA.ID_TIEMPO(tick_fecha_y_hora),
-                tick_sucursal,
-                TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-                TESLA.ID_UBICACION(loca_nombre)
-END
+       TESLA.OBTENER_ID_TIEMPO(YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada)),
+        TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
+        AVG(e.env_costo),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+
+		from TESLA.ENVIO e
+		join TESLA.DOMICILIO d on e.env_domicilio = d.domi_id
+		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
+		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
+
+		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
+		l.loc_nombre, pv.prov_nombre
+ END
 GO
 
 ---- MIGRACION PAGO
@@ -703,16 +785,13 @@ BEGIN
     INSERT INTO TESLA.BI_HECHO_PAGO(bi_pago_tipo_medio_de_pago,
                                     bi_pago_tiempo,
                                     bi_pago_ubicacion,
-                                    bi_pago_importe,
-                                    bi_pago_cuotas
-                                    )
+                                    bi_pago_importe)
     SELECT DISTINCT
         (SELECT bimp.bi_tipo_medio_pago_id FROM TESLA.BI_TIPO_MEDIO_DE_PAGO bimp
 		where tmp.tipo_medio_de_pago_descripcion = bimp.bi_tipo_medio_pago_descripcion),
         TESLA.OBTENER_ID_TIEMPO(YEAR(p.pago_fecha), MONTH(p.pago_fecha)),
-        TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre)--,
-        --SUM(tick_total_venta),
-        --SUM(tick_total_descuento_medio_pago)
+        TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
+        SUM(p.pago_importe)
 
         FROM TESLA.PAGO p
 		join TESLA.MEDIO_DE_PAGO mp on p.pago_medio = mp.medio_de_pago_id
@@ -729,33 +808,31 @@ BEGIN
 END
 GO
 
+---- MIGRACION FACTURACION
 
- SELECT DISTINCT
-        (SELECT bimp.bi_tipo_medio_pago_id FROM TESLA.BI_TIPO_MEDIO_DE_PAGO bimp
-		where tmp.tipo_medio_de_pago_descripcion = bimp.bi_tipo_medio_pago_descripcion),
-        YEAR(p.pago_fecha), 
-		MONTH(p.pago_fecha),
-        l.loc_nombre, 
-		pv.prov_nombre--,
-        --SUM(tick_total_venta),
-        --SUM(tick_total_descuento_medio_pago)
+CREATE PROCEDURE TESLA.bi_migrar_facturacion AS
+BEGIN
+    INSERT INTO TESLA.BI_HECHO_FACTURACION(bi_facturacion_tiempo, bi_facturacion_ubicacion, bi_facturacion_concepto, bi_facturacion_total)
+    SELECT DISTINCT
+        TESLA.OBTENER_ID_TIEMPO(YEAR(f.fact_fecha), MONTH(f.fact_fecha)),
+        TESLA.OBTENER_ID_UBICACION_VENDEDOR(f.fact_vendedor),
+		(SELECT bcf.bi_conc_id FROM TESLA.BI_CONCEPTO_FACTURA bcf
+		where cf.conc_descripcion = bcf.bi_conc_descripcion),
+        SUM(IT.item_sub_total)
 
-        FROM TESLA.PAGO p
-		join TESLA.MEDIO_DE_PAGO mp on p.pago_medio = mp.medio_de_pago_id
-		JOIN TESLA.TIPO_MEDIO_DE_PAGO tmp on tmp.tipo_medio_de_pago_id = mp.medio_de_pago_tipo
-		join TESLA.VENTA v on p.pago_venta = v.vent_id
-		join TESLA.ENVIO e on e.env_venta = v.vent_id
-		join TESLA.DOMICILIO d on e.env_domicilio = d.domi_id
-		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
-		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
+        FROM TESLA.ITEM_FACTURA IT
+		JOIN TESLA.CONCEPTO_FACTURA cf on IT.item_concepto_factura = cf.conc_id
+		JOIN TESLA.FACTURA f on IT.item_factura = f.fact_id
+		
 
-		group by tmp.tipo_medio_de_pago_descripcion, YEAR(p.pago_fecha), MONTH(p.pago_fecha), 
-				l.loc_nombre, pv.prov_nombre
+		group by cf.conc_descripcion, YEAR(f.fact_fecha), MONTH(f.fact_fecha), 
+				f.fact_vendedor
 
-SELECT * FROM TESLA.LOCALIDAD ORDER BY loc_nombre
+END
+GO
 --PROCEDURE 
 --DIMENSION VENTAXPRODUCTO
-
+/*
 CREATE PROCEDURE TESLA.bi_migrar_venta_x_producto AS
 BEGIN
     INSERT INTO TESLA.BI_VENTA_X_PRODUCTO(bi_veXpr_tiempo,bi_veXpr_categoria,bi_veXpr_turno,bi_veXpr_descuento_promocion)
@@ -822,19 +899,18 @@ END
 
 GO
 */
+
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(5)EXECUTE FACTS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-/*
-TODO EXECUTE FACTS
+--TODO EXECUTE FACTS
 EXEC TESLA.bi_migrar_envio;
 EXEC TESLA.bi_migrar_pago;
-EXEC TESLA.bi_migrar_venta_x_producto;
-EXEC TESLA.bi_migrar_venta;
+EXEC TESLA.bi_migrar_facturacion;
 
 GO
-*/
+
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(6)VISTAS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
