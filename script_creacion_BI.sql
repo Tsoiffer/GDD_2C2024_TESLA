@@ -160,14 +160,14 @@ IF OBJECT_ID('TESLA.VW_LOCALIDADES_MAYOR_COSTO_ENVIO') IS NOT NULL
 
 IF OBJECT_ID('TESLA.VW_SUCURSALES_MAYOR_IMPORTE_EN_CUOTAS') IS NOT NULL
   DROP VIEW TESLA.VW_SUCURSALES_MAYOR_IMPORTE_EN_CUOTAS;
-
-IF OBJECT_ID('TESLA.VW_PROMEDIO_IMPORTE_CUOTA') IS NOT NULL
-  DROP VIEW TESLA.VW_PROMEDIO_IMPORTE_CUOTA;
-
-IF OBJECT_ID('TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO') IS NOT NULL
-  DROP VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO;
-GO
 */
+IF OBJECT_ID('TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO') IS NOT NULL
+  DROP VIEW TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO;
+
+IF OBJECT_ID('TESLA.VW_FACTURACION_X_PROVINCIA') IS NOT NULL
+  DROP VIEW TESLA.VW_FACTURACION_X_PROVINCIA;
+GO
+
 
 
 -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -1065,69 +1065,38 @@ CREATE VIEW TESLA.VW_CANTIDAD_DE_ENVIOS_POR_RANGO_ETARIO_DE_CLIENTES AS
 
     GROUP BY bi_rang_nombre, bi_tiem_cuatrimestre, bi_tiem_anio
 GO
-
+*/
 -- 9
-CREATE VIEW TESLA.VW_LOCALIDADES_MAYOR_COSTO_ENVIO AS
-	SELECT TOP 5
-		bi_ubic_localidad,
-		SUM(bi_envi_costo) as costo_envio
-	
-	FROM TESLA.BI_ENVIO 
-	INNER JOIN TESLA.BI_UBICACION  
-		ON bi_envi_ubicacion = bi_ubic_codigo
-		
-	GROUP BY bi_ubic_localidad, bi_envi_costo
-	
-	ORDER BY SUM(bi_envi_costo) DESC
+CREATE VIEW TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO AS
+	SELECT
+	ti.bi_tiempo_mes as Mes,
+	ti.bi_tiempo_anio as [Año],
+	cf.bi_conc_descripcion as [Concepto Factura],
+	FORMAT(
+	sum(FC.bi_facturacion_total)*100
+	/
+	(SELECT SUM(FC.bi_facturacion_total)
+	FROM TESLA.BI_HECHO_FACTURACION FC
+	join TESLA.BI_TIEMPO ti2 on FC.bi_facturacion_tiempo = ti2.bi_tiempo_id
+	where ti2.bi_tiempo_mes = ti.bi_tiempo_mes 
+	and ti2.bi_tiempo_anio = ti.bi_tiempo_anio), 'N2') + '%' as [Porcentaje Facturado]
+
+	FROM TESLA.BI_HECHO_FACTURACION FC
+	join TESLA.BI_TIEMPO ti on FC.bi_facturacion_tiempo = ti.bi_tiempo_id
+	join TESLA.BI_CONCEPTO_FACTURA cf on FC.bi_facturacion_concepto = cf.bi_conc_id
+	group by ti.bi_tiempo_mes, ti.bi_tiempo_anio, cf.bi_conc_descripcion
 GO
 
 -- 10
-CREATE VIEW TESLA.VW_SUCURSALES_MAYOR_IMPORTE_EN_CUOTAS AS
-	SELECT TOP 3
-		bi_pago_sucursal,
-		bi_pago_medio_de_pago,
-		bi_tiem_mes,
-		bi_tiem_anio,
-		( 	CASE WHEN bi_pago_cuota IS NOT NULL 
-			THEN SUM(bi_pago_monto) 
-			ELSE 0 END) as importe_pago
-	
-	FROM TESLA.BI_PAGO 
-	INNER JOIN TESLA.BI_TIEMPO
-		ON bi_pago_tiempo = bi_tiem_codigo
-	
-	GROUP BY bi_pago_sucursal, bi_pago_medio_de_pago, bi_tiem_mes, bi_tiem_anio, bi_pago_cuota
-	
-	ORDER BY SUM(bi_pago_monto) DESC
-GO
-
--- 11
-CREATE VIEW TESLA.VW_PROMEDIO_IMPORTE_CUOTA AS
+CREATE VIEW TESLA.VW_FACTURACION_X_PROVINCIA AS
 	SELECT 
-		bi_rang_nombre,
-		bi_cuota_detalle as cant_cuotas,
-		AVG(bi_pago_monto) as promedio_importe
-	
-	FROM TESLA.BI_PAGO
-	INNER JOIN TESLA.BI_RANGO_ETARIO 
-        ON bi_pago_rango_etareo_cl = bi_rang_codigo
-	INNER JOIN TESLA.BI_CUOTA
-		ON bi_cuota_codigo = bi_pago_cuota
-	
-	GROUP BY bi_rang_nombre, bi_cuota_detalle
-GO
+	ti.bi_tiempo_cuatrimestre as Cuatrimestre,
+	ti.bi_tiempo_anio as [Año],
+	ub.bi_ubic_provincia as Provincia,
+	FORMAT(SUM(FC.bi_facturacion_total), 'N2', 'es-ES') as [Total Facturado]
+	FROM TESLA.BI_HECHO_FACTURACION FC
+	join TESLA.BI_UBICACION ub on FC.bi_facturacion_ubicacion = ub.bi_ubic_id
+	join TESLA.BI_TIEMPO ti on FC.bi_facturacion_tiempo = ti.bi_tiempo_id
 
--- 12
-CREATE VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO_X_MEDIO_PAGO
-AS
-	SELECT
-		bi_tiem_cuatrimestre,
-		( (SUM(bi_pago_descuento_aplicado)) / (SUM(bi_pago_descuento_aplicado) + SUM(bi_pago_monto)) ) as [Porcentaje de descuento]
-		
-	FROM TESLA.BI_PAGO
-	INNER JOIN TESLA.BI_TIEMPO
-		ON bi_pago_tiempo = bi_tiem_codigo
-
-	GROUP BY bi_tiem_cuatrimestre
+	group by ti.bi_tiempo_cuatrimestre, ti.bi_tiempo_anio, ub.bi_ubic_provincia
 GO
-*/
