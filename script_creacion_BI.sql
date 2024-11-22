@@ -5,7 +5,7 @@ GO
 -----------------------------------------------------(1)ELIMINACION OBJETOS PREVIOS----------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
--- DROP TABLAS
+-- DROPS TABLAS HECHOS
 IF OBJECT_ID('TESLA.BI_HECHO_FACTURACION ','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_FACTURACION
 
@@ -20,6 +20,8 @@ IF OBJECT_ID('TESLA.BI_HECHO_VENTA','U') IS NOT NULL
 
 IF OBJECT_ID('TESLA.BI_HECHO_PUBLICACION','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_PUBLICACION;
+
+--DROPS TABLAS DIMENSIONES
 
 IF OBJECT_ID('TESLA.BI_CONCEPTO_FACTURA','U') IS NOT NULL
     DROP TABLE TESLA.BI_CONCEPTO_FACTURA;
@@ -80,7 +82,7 @@ IF OBJECT_ID('TESLA.ID_CUOTA') IS NOT NULL
 GO
 */
 
---DROP PROCEDURES
+--DROPS MIGRACIONES DIMENSIONES
 IF OBJECT_ID('TESLA.bi_migrar_tiempo') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_tiempo;
 GO
@@ -115,6 +117,12 @@ GO
 
 IF OBJECT_ID('TESLA.bi_migrar_concepto_factura') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_concepto_factura;
+GO
+
+-- DROPS MIGRACIONES TABLAS HECHOS
+
+IF OBJECT_ID('TESLA.bi_migrar_venta') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_venta;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
@@ -352,7 +360,9 @@ BEGIN
 END
 GO
 
---Dado un id_vendedor devuelve un id_bi_ubicacion
+-- TODO VER FUNCIONES
+
+--Dado un id_vendedor devuelve un bi_ubic_id
 CREATE FUNCTION TESLA.OBTENER_ID_UBICACION_VENDEDOR(@vendedor_id DECIMAL(18,0)) RETURNS DECIMAL(18,0) AS
 BEGIN
 
@@ -372,7 +382,7 @@ END
 GO
 
 
-/* TODO VER FUNCIONES
+
 --Dado un subrubro y un rubro devuelve un id_subrubro
 create FUNCTION TESLA.OBTENER_ID_SUBRUBRO(@subrubro varchar(50), @rubro varchar(50)) RETURNS DECIMAL(18,0) AS
 BEGIN
@@ -388,6 +398,7 @@ BEGIN
 END
 GO
 
+/*
 --Dado una fecha de nacimiento, devuelve el rango de edad
 CREATE FUNCTION TESLA.RANGO_EDAD(@fecha_nacimiento DATE) RETURNS DECIMAL(18) AS
 BEGIN
@@ -488,7 +499,7 @@ GO
 */
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
------------------------------------------------------(4)STORED PROCEDURES--------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------(4)MIGRACIONES DIMENSIONES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 GO
 --DIMENSION TIEMPO
@@ -699,11 +710,11 @@ EXEC TESLA.bi_migrar_concepto_factura;
 GO
 
 -----------------------------------------------------------------
------------(4.2)EXEC MIGRACIONES---------------------------------
+-----------(4.2)MIGRACIONES HECHOS---------------------------------
 -----------------------------------------------------------------
 
-/*
 
+/*
 
 SELECT publi_fecha_inicio, publi_fecha_fin,DATEDIFF(DAY,publi_fecha_inicio, publi_fecha_fin) FROM TESLA.PUBLICACION
 WHERE MONTH(publi_fecha_fin) > MONTH(publi_fecha_inicio)
@@ -735,7 +746,7 @@ BEGIN
                 tick_sucursal,
                 TESLA.RANGO_EDAD(clie_fecha_nacimiento),
                 TESLA.ID_UBICACION(loca_nombre)
-END
+END*/
 GO
 
 
@@ -744,19 +755,28 @@ CREATE PROCEDURE TESLA.bi_migrar_venta AS
 BEGIN
     INSERT INTO TESLA.BI_HECHO_VENTA(bi_venta_tiempo, bi_venta_ubicacion, bi_venta_subRubro, bi_venta_rango_horario, bi_venta_importe)
     SELECT 
-        ,
-        tick_sucursal,
-        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-        TESLA.ID_UBICACION(loca_nombre),
-        SUM(CAST(envi_costo AS DECIMAL(18,2))),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+        TESLA.OBTENER_ID_TIEMPO(YEAR(v.vent_fecha), MONTH(v.vent_fecha)),
+        TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
+        TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
+		1, -- TODO RANGO HORARIO ??? ,
+        SUM(v.vent_total)
     FROM TESLA.VENTA v
     JOIN TESLA.DETALLE_VENTA dv on v.vent_id = dv.det_vent_venta
-	join PUBLICACION p on dv.det_vent_publicacion = p.publi_id
+	join TESLA.PUBLICACION p on dv.det_vent_publicacion = p.publi_id
+	join TESLA.ALMACEN a on p.publi_almacen = a.alm_id
+	join TESLA.DOMICILIO d on a.alm_id = d.domi_almacen
+	join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
+	join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
+--TODO: MUCHOS JOINS, VER SI SE PUEDE HACER CON MENOS O SI SE PUEDE HACER OTRA COSA
 
+	join TESLA.PRODUCTO pr on p.publi_producto = pr.prod_id
+	join TESLA.SUB_RUBRO sr on pr.prod_sub_rubro = sr.sub_rubr_id
+	join TESLA.RUBRO r on sr.sub_rubr_rubro = r.rubr_id
+
+	group by YEAR(v.vent_fecha), MONTH(v.vent_fecha), pv.prov_nombre, r.rubr_descripcion
+END
 GO
-*/
+
 --- MIGRAR ENVIO
 CREATE PROCEDURE TESLA.bi_migrar_envio AS
 BEGIN
@@ -830,81 +850,12 @@ BEGIN
 
 END
 GO
---PROCEDURE 
---DIMENSION VENTAXPRODUCTO
-/*
-CREATE PROCEDURE TESLA.bi_migrar_venta_x_producto AS
-BEGIN
-    INSERT INTO TESLA.BI_VENTA_X_PRODUCTO(bi_veXpr_tiempo,bi_veXpr_categoria,bi_veXpr_turno,bi_veXpr_descuento_promocion)
-    SELECT DISTINCT 
-        TESLA.ID_TIEMPO(tick_fecha_y_hora),
-        TESLA.OBTENER_CODIGO_CATEGORIA(subc_nombre),
-        TESLA.OBTENER_CODIGO_TURNO(tick_fecha_y_hora),
-        SUM(promo_descuento_aplicado)
-
-    FROM TESLA.TICKET 
-    LEFT JOIN TESLA.ITEM 
-        ON tick_codiGO = item_nro_de_ticket 
-    LEFT JOIN TESLA.PRODUCTO 
-        ON item_prod_codiGO = prod_codiGO
-    INNER JOIN TESLA.PROMOCION_ITEM 
-        ON item_codiGO = promo_codiGO_item
-	INNER JOIN TESLA.SUBCATEGORIA ON prod_subcategoria = subc_codiGO
-
-    GROUP BY     TESLA.ID_TIEMPO(tick_fecha_y_hora),
-                TESLA.OBTENER_CODIGO_CATEGORIA(subc_nombre),
-                TESLA.OBTENER_CODIGO_TURNO(tick_fecha_y_hora)
-END
-GO
-
-
-
-
-CREATE PROCEDURE TESLA.bi_migrar_venta AS
-BEGIN
-    insert into TESLA.BI_VENTA(bi_vent_ubicacion,bi_vent_tiempo,bi_vent_sucursal,bi_vent_turno,bi_vent_rango_etario_empl,bi_vent_tipo_caja,bi_vent_monto,bi_vent_cantidad,bi_vent_descuento_MP,bi_vent_descuento_promocion)
-    SELECT distinct
-        TESLA.ID_UBICACION(loca_nombre),
-        TESLA.ID_TIEMPO(tick_fecha_y_hora),
-        tick_sucursal,
-        TESLA.OBTENER_CODIGO_TURNO(tick_fecha_y_hora),
-        TESLA.RANGO_EDAD(empl_fecha_nacimiento),
-        tipo_codigo,
-        sum(tick_total_venta),
-        COUNT(DISTINCT item_prod_codigo),
-        SUM(tick_total_descuento_medio_paGO),
-        SUM(tick_total_promociones)
-
-    FROM TESLA.TICKET 
-    Left join TESLA.EMPLEADO 
-        on tick_empleado = empl_legajo
-    Left join TESLA.CAJA  
-        on caja_codigo = tick_caja
-    Left join TESLA.TIPO_CAJA 
-        on caja_tipo = tipo_codigo
-    Left join TESLA.SUCURSAL 
-        on sucu_numero = tick_sucursal
-    Left join TESLA.LOCALIDAD 
-        on sucu_localidad = loca_codigo
-    Left Join TESLA.ITEM 
-        on item_nro_de_ticket = tick_codigo
-
-    group by    TESLA.ID_UBICACION(loca_nombre),
-                TESLA.ID_TIEMPO(tick_fecha_y_hora),
-                tick_sucursal,
-                TESLA.RANGO_EDAD(empl_fecha_nacimiento),
-                TESLA.OBTENER_CODIGO_TURNO(tick_fecha_y_hora), 
-                tipo_codigo
-END
-
-GO
-*/
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
------------------------------------------------------(5)EXECUTE FACTS------------------------------------------------------------------------------------------------------------------------------------------------
+-----------------------------------------------------(5)EXEC HECHOS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
---TODO EXECUTE FACTS
+
 EXEC TESLA.bi_migrar_envio;
 EXEC TESLA.bi_migrar_pago;
 EXEC TESLA.bi_migrar_facturacion;
