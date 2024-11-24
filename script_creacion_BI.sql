@@ -8,9 +8,9 @@ GO
 -- DROPS TABLAS HECHOS
 IF OBJECT_ID('TESLA.BI_HECHO_FACTURACION ','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_FACTURACION
-
-IF OBJECT_ID('TESLA.BI_HECHO_EVENTO_ALMACEN','U') IS NOT NULL
-    DROP TABLE TESLA.BI_HECHO_EVENTO_ALMACEN;
+	
+IF OBJECT_ID('TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN;
 
 IF OBJECT_ID('TESLA.BI_HECHO_PAGO ','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_PAGO
@@ -127,16 +127,20 @@ GO
 
 -- DROPS MIGRACIONES TABLAS HECHOS
 
-IF OBJECT_ID('TESLA.bi_migrar_venta') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_venta;
+IF OBJECT_ID('TESLA.bi_migrar_publicacion') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_publicacion;
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_evento_loc_cliente') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_evento_loc_cliente;
+GO
+
+IF OBJECT_ID('TESLA.bi_migrar_evento_prov_almacen') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_evento_prov_almacen;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_pago;
-GO
-
-IF OBJECT_ID('TESLA.bi_migrar_envio') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_envio;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_facturacion') IS NOT NULL
@@ -245,15 +249,14 @@ CREATE TABLE TESLA.BI_CONCEPTO_FACTURA (
 
 CREATE TABLE TESLA.BI_HECHO_PUBLICACION (
     bi_publicacion_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_publicacion_fecha_inicio DECIMAL(18, 0),
-    bi_publicacion_fecha_final DECIMAL(18, 0),
+    bi_publicacion_tiempo DECIMAL(18, 0),
     bi_publicacion_subRubro DECIMAL(18, 0),
     bi_publicacion_marca DECIMAL(18, 0),
     bi_publicacion_stock DECIMAL(18, 0),
-    FOREIGN KEY (bi_publicacion_fecha_inicio) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
-	FOREIGN KEY (bi_publicacion_fecha_final) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	bi_publicacion_promedio_vigencia DECIMAL(18, 0),
+    FOREIGN KEY (bi_publicacion_tiempo) 	REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
 	FOREIGN KEY (bi_publicacion_subRubro) 	REFERENCES TESLA.BI_SUBRUBRO(bi_subr_id),
-	FOREIGN KEY (bi_publicacion_marca) 	REFERENCES TESLA.BI_MARCA(bi_marca_id),
+	FOREIGN KEY (bi_publicacion_marca) 		REFERENCES TESLA.BI_MARCA(bi_marca_id),
 );
 
 CREATE TABLE TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE (
@@ -426,6 +429,9 @@ BEGIN
 END
 GO
 
+
+/*
+--TODO ELIMINAR LAS QUE NO USEMOS
 CREATE FUNCTION TESLA.OBTENER_CODIGO_TURNO (@fecha_y_hora DATETIME)
 RETURNS INT
 AS
@@ -443,9 +449,9 @@ BEGIN
     RETURN @codigo_turno;
 END;
 GO
-*/
 
-/*
+
+
 -- Dado una cantidad de cuotas devuelve un codigo de cuota
 CREATE FUNCTION TESLA.ID_CUOTA(@deta_cuotas DECIMAL(18,0)) RETURNS DECIMAL(18,0) AS
 BEGIN
@@ -586,6 +592,8 @@ BEGIN
             AND bt.bi_tiempo_mes = MONTH(pago_fecha)
             AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
       );
+
+	  PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIEMPO')
 END
 GO
 
@@ -599,6 +607,8 @@ BEGIN
 	FROM TESLA.LOCALIDAD
 	 JOIN TESLA.PROVINCIA
 		ON prov_id = loc_provincia
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION UBICACION')
 END
 GO
 
@@ -610,6 +620,7 @@ BEGIN
 			('25 - 35'),
             ('35 - 50'),
 			('> 50')
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION RANGO_ETARIO_CLIENTES')
 END
 GO
 
@@ -622,8 +633,11 @@ BEGIN
            ('06:00 - 12:00'),
 		   ('12:00 - 18:00'),
 		   ('18:00 - 00:00')
-	END
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION RANGO_HORARIO_VENTAS')
+END
 GO
+
 --DIMENSION MEDIO_DE_PAGO 
 CREATE PROCEDURE TESLA.bi_migrar_tipo_medio_de_pago AS
 BEGIN
@@ -631,6 +645,8 @@ BEGIN
 	SELECT
 		tipo_medio_de_pago_descripcion
 	FROM TESLA.TIPO_MEDIO_DE_PAGO
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIPO_MEDIO_DE_PAGO')
 END
 GO
 
@@ -643,6 +659,7 @@ BEGIN
          tipo_envio_descripcion
     FROM TESLA.TIPO_ENVIO
     
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIPO_ENVIO')
 END
 GO
 
@@ -655,6 +672,8 @@ BEGIN
 		rubr_descripcion
     FROM TESLA.SUB_RUBRO
 	join TESLA.RUBRO on sub_rubr_rubro = rubr_id
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION SUBRUBRO')
 END
 GO
 
@@ -665,6 +684,8 @@ BEGIN
     SELECT DISTINCT 
 		marca_descripcion
     FROM TESLA.MARCA
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION MARCA')
 END
 GO
 
@@ -676,6 +697,8 @@ BEGIN
     SELECT DISTINCT 
 		conc_descripcion
     FROM TESLA.CONCEPTO_FACTURA
+
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION CONCEPTO_FACTURA')
 END
 GO
 
@@ -700,27 +723,26 @@ GO
 -----------------------------------------------------------------
 
 
-/*
 
+/*
 SELECT publi_fecha_inicio, publi_fecha_fin,DATEDIFF(DAY,publi_fecha_inicio, publi_fecha_fin) FROM TESLA.PUBLICACION
 WHERE MONTH(publi_fecha_fin) > MONTH(publi_fecha_inicio)
 order by 3 desc
+*/
+
 --- MIGRAR PUBLICACION
 CREATE PROCEDURE TESLA.bi_migrar_publicacion AS
 BEGIN
-    INSERT INTO TESLA.BI_HECHO_PUBLICACION(bi_publicacion_fecha_inicio, bi_publicacion_fecha_final, bi_publicacion_subRubro,
-											bi_publicacion_marca, bi_publicacion_stock
+    INSERT INTO TESLA.BI_HECHO_PUBLICACION(bi_publicacion_tiempo, 
+											bi_publicacion_subRubro,
+											bi_publicacion_marca, 
+											bi_publicacion_stock,
+											bi_publicacion_promedio_vigencia
 											)
     SELECT 
-        TESLA.ID_TIEMPO(publi_fecha_inicio),
-		TESLA.ID_TIEMPO(publi_fecha_fin),
-
-        tick_sucursal,
-        TESLA.RANGO_EDAD(clie_fecha_nacimiento),
-        TESLA.ID_UBICACION(loca_nombre),
-        SUM(CAST(envi_costo AS DECIMAL(18,2))),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(envi_hora_fin, envi_fecha_y_hora_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+		 TESLA.OBTENER_ID_TIEMPO(YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio)),
+		 TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
+		
     FROM TESLA.PUBLICACION
     LEFT JOIN TESLA.ENVIO e
         ON envi_codigo_ticket = tick_codigo
@@ -732,11 +754,11 @@ BEGIN
                 tick_sucursal,
                 TESLA.RANGO_EDAD(clie_fecha_nacimiento),
                 TESLA.ID_UBICACION(loca_nombre)
-END*/
+END
 GO
 
 
---- MIGRAR VENTA
+--- MIGRAR EVENTO LOC CLIENTE
 CREATE PROCEDURE TESLA.bi_migrar_evento_loc_cliente AS
 BEGIN
     -- Crear una tabla temporal con los clientes y sus rangos etarios
@@ -792,6 +814,8 @@ BEGIN
 
     -- Eliminar la tabla temporal
     DROP TABLE #temp_clientes;
+
+	PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_LOCALIDAD_CLIENTE')
 END;
 GO
 
@@ -821,6 +845,8 @@ BEGIN
 
 		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
 		l.loc_nombre, pv.prov_nombre
+
+		PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_PROVINCIA_ALMACEN')
  END
 GO
 
@@ -851,6 +877,7 @@ BEGIN
 		group by tmp.tipo_medio_de_pago_descripcion, YEAR(p.pago_fecha), MONTH(p.pago_fecha), 
 				l.loc_nombre, pv.prov_nombre
 
+		PRINT('SE FINALIZA LA MIGRACION DEL HECHO PAGO')
 END
 GO
 
@@ -878,7 +905,7 @@ BEGIN
 
 		group by cf.conc_descripcion, YEAR(f.fact_fecha), MONTH(f.fact_fecha), l.loc_nombre, pv.prov_nombre
 			
-
+		PRINT('SE FINALIZA LA MIGRACION DEL HECHO FACTURACION')
 END
 GO
 
@@ -886,8 +913,9 @@ GO
 -----------------------------------------------------(5)EXEC HECHOS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-
-EXEC TESLA.bi_migrar_envio;
+EXEC TESLA.bi_migrar_publicacion;
+EXEC TESLA.bi_migrar_evento_loc_cliente;
+EXEC TESLA.bi_migrar_evento_prov_almacen;
 EXEC TESLA.bi_migrar_pago;
 EXEC TESLA.bi_migrar_facturacion;
 
