@@ -122,12 +122,8 @@ IF OBJECT_ID('TESLA.bi_migrar_concepto_factura') IS NOT NULL
 GO
 
 -- DROPS MIGRACIONES TABLAS HECHOS
-IF OBJECT_ID('TESLA.bi_migrar_publicacion_stock') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_publicacion_stock;
-GO
-
-IF OBJECT_ID('TESLA.bi_migrar_publicacion_promedio_vigencia') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_publicacion_promedio_vigencia;
+IF OBJECT_ID('TESLA.bi_migrar_publicacion') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_publicacion;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_evento_loc_cliente') IS NOT NULL
@@ -147,6 +143,19 @@ IF OBJECT_ID('TESLA.bi_migrar_facturacion') IS NOT NULL
 GO
 
 --DROP VIEWS
+
+IF OBJECT_ID('TESLA.VW_PROMEDIO_TIEMPO_PUBLICACIONES') IS NOT NULL
+ DROP VIEW TESLA.VW_PROMEDIO_TIEMPO_PUBLICACIONES
+ GO
+
+IF OBJECT_ID('TESLA.VW_PROMEDIO_STOCK_INICIAL') IS NOT NULL
+ DROP VIEW TESLA.VW_PROMEDIO_STOCK_INICIAL
+ GO
+
+IF OBJECT_ID('TESLA.VW_VENTA_PROMEDIO_MENSUAL') IS NOT NULL
+ DROP VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL
+ GO
+
 /* TODO VIWS
 IF OBJECT_ID('TESLA.VW_TICKET_PROMEDIO_MENSUAL') IS NOT NULL
   DROP VIEW TESLA.VW_TICKET_PROMEDIO_MENSUAL;
@@ -449,35 +458,6 @@ BEGIN
 END
 GO
 
-
-/*
---TODO ELIMINAR LAS QUE NO USEMOS
-
---Dado una categoria devuelve su codigo
-CREATE FUNCTION TESLA.OBTENER_CODIGO_CATEGORIA(@categoria varchar(255)) RETURNS DECIMAL(18,0) AS
-BEGIN
-	DECLARE @codigo_categoria decimal(18,0)
-	SELECT @codigo_categoria = bi_cate_codigo from TESLA.BI_CATEGORIA
-	where bi_cate_detalle = @categoria
-
-	RETURN @codigo_categoria
-END
-GO
-
---Dado un mes, anio y cuatrimestre, devuelve el codigo del tiempo
-CREATE FUNCTION TESLA.OBTENER_CODIGO_TIEMPO(@anio DECIMAL(4, 0),@mes DECIMAL(2, 0),@cuatrimestre DECIMAL(1, 0)) 
-RETURNS DECIMAL(18,0) AS
-BEGIN
-	DECLARE @codigo_tiempo decimal(18,0)
-	SELECT @codigo_tiempo = bi_tiem_codigo from TESLA.BI_TIEMPO
-	where bi_tiem_anio = @anio and bi_tiem_mes = @mes and bi_tiem_cuatrimestre = @cuatrimestre
-
-	RETURN @codigo_tiempo
-END
-GO
-
-*/
-
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)MIGRACIONES DIMENSIONES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -710,8 +690,8 @@ GO
 -----------(4.2)MIGRACIONES HECHOS---------------------------------
 -----------------------------------------------------------------
 
---- MIGRAR PUBLICACION STOCK
-CREATE PROCEDURE TESLA.bi_migrar_publicacion_stock AS
+--- MIGRAR PUBLICACION
+CREATE PROCEDURE TESLA.bi_migrar_publicacion AS
 BEGIN
     INSERT INTO TESLA.BI_HECHO_PUBLICACION(bi_publicacion_tiempo, 
 											bi_publicacion_subRubro,
@@ -720,48 +700,21 @@ BEGIN
 											bi_publicacion_promedio_vigencia
 											)
     SELECT 
-		 TESLA.OBTENER_ID_TIEMPO(YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio)),
-		 NULL,
+		 TESLA.OBTENER_ID_TIEMPO(YEAR(p.publi_fecha_inicio), MONTH(publi_fecha_inicio)),
+		 TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
 		 TESLA.OBTENER_ID_MARCA(m.marca_descripcion),
 		 AVG(p.publi_stock),
-		 NULL
+		 AVG(TESLA.DIFERENCIA_EN_DIAS(p.publi_fecha_inicio, p.publi_fecha_fin))
 		
     FROM TESLA.PUBLICACION p
 	join TESLA.PRODUCTO pr on p.publi_producto = pr.prod_id
 	join TESLA.MARCA m on pr.prod_marca = m.marca_id
-
-	group by YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio), m.marca_descripcion
-   
-    PRINT('SE FINALIZA LA MIGRACION DE PUBLICACION_STOCK')
-END
-GO
-
---- MIGRAR PUBLICACION PROMEDIO VIGENCIA
-CREATE PROCEDURE TESLA.bi_migrar_publicacion_promedio_vigencia AS
-BEGIN
-    INSERT INTO TESLA.BI_HECHO_PUBLICACION(bi_publicacion_tiempo, 
-											bi_publicacion_subRubro,
-											bi_publicacion_marca, 
-											bi_publicacion_stock,
-											bi_publicacion_promedio_vigencia
-											)
-    SELECT 
-		 TESLA.OBTENER_ID_TIEMPO(YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio)),
-		 TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
-		 NULL,
-		 NULL,
-		 AVG(TESLA.DIFERENCIA_EN_DIAS(p.publi_fecha_inicio, p.publi_fecha_fin))
-		 
-		
-    FROM TESLA.PUBLICACION p
-	join TESLA.PRODUCTO pr on p.publi_producto = pr.prod_id
-	join TESLA.SUB_RUBRO sr on pr.prod_sub_rubro = sr.sub_rubr_id
+	JOIN TESLA.SUB_RUBRO sr on pr.prod_sub_rubro = sr.sub_rubr_id
 	join TESLA.RUBRO r on sr.sub_rubr_rubro = r.rubr_id
 
-	group by YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio), sr.sub_rubr_descripcion, r.rubr_descripcion
-
-	PRINT('SE FINALIZA LA MIGRACION DE PUBLICACION_PROMEDIO_VIGENCIA')
+	group by YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio), m.marca_descripcion,sr.sub_rubr_descripcion, r.rubr_descripcion
    
+    PRINT('SE FINALIZA LA MIGRACION DE PUBLICACION_STOCK')
 END
 GO
 
@@ -838,7 +791,7 @@ BEGIN
     SELECT 
        TESLA.OBTENER_ID_TIEMPO(YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada)),
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
-        SUM(v.vent_total),
+        AVG(v.vent_total),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
 
@@ -921,8 +874,7 @@ GO
 -----------------------------------------------------(5)EXEC HECHOS------------------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-EXEC TESLA.bi_migrar_publicacion_stock;
-EXEC TESLA.bi_migrar_publicacion_promedio_vigencia;
+EXEC TESLA.bi_migrar_publicacion;
 EXEC TESLA.bi_migrar_evento_loc_cliente;
 EXEC TESLA.bi_migrar_evento_prov_almacen;
 EXEC TESLA.bi_migrar_pago;
@@ -936,66 +888,49 @@ GO
 
 -- 1
 
-/*
-TODO VISTAS
-CREATE VIEW TESLA.VW_TICKET_PROMEDIO_MENSUAL AS
-	SELECT 
-		bi_ubic_localidad AS Localidad,
-		bi_tiem_anio AS Anio,
-		bi_tiem_mes AS Mes,
-		( ( SUM(bi_vent_monto) ) / ( COUNT(bi_vent_codigo) ) ) AS Ticket_Promedio
-		
-	FROM TESLA.BI_VENTA 
-	INNER JOIN TESLA.BI_UBICACION 
-		ON bi_vent_ubicacion = bi_ubic_codigo
-	INNER JOIN TESLA.BI_TIEMPO 
-		ON bi_vent_tiempo = bi_tiem_codigo
-		
-	GROUP BY bi_ubic_localidad, bi_tiem_anio, bi_tiem_mes
+CREATE VIEW TESLA.VW_PROMEDIO_TIEMPO_PUBLICACIONES AS
+	SELECT
+		tmp.bi_tiempo_anio AS [año],
+		tmp.bi_tiempo_cuatrimestre AS cuatrimestre,
+		subr.bi_subr_rubro_descripcion AS RUBRO,
+		subr.bi_subr_descripcion AS SUB_RUBRO,
+		AVG(hecho.bi_publicacion_promedio_vigencia) AS [promedio de vigencia en dias]
+	FROM TESLA.BI_HECHO_PUBLICACION hecho
+	JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_publicacion_tiempo
+	JOIN TESLA.BI_SUBRUBRO subr ON subr.bi_subr_id = hecho.bi_publicacion_subRubro 
+
+	GROUP BY tmp.bi_tiempo_anio, tmp.bi_tiempo_cuatrimestre, subr.bi_subr_rubro_descripcion,subr.bi_subr_descripcion
 GO
 
 
 -- 2
-CREATE VIEW TESLA.VW_CANTIDAD_UNIDADES_PROMEDIO AS
-	SELECT 
-		bi_tiem_cuatrimestre,
-		bi_tiem_anio,
-		bi_turno_rango,
-		( ( SUM(bi_vent_cantidad) ) / ( COUNT(bi_vent_codigo) ) ) as promedio_venta_sobre_anio
-		
-	FROM TESLA.BI_VENTA
-	INNER JOIN TESLA.BI_TIEMPO
-		ON bi_tiem_codigo = bi_vent_tiempo
-	INNER JOIN TESLA.BI_TURNO
-		ON bi_turno_codigo = bi_vent_turno
-	
-	GROUP BY bi_tiem_cuatrimestre, bi_tiem_anio, bi_turno_rango
+CREATE VIEW TESLA.VW_PROMEDIO_STOCK_INICIAL AS
+	SELECT
+		tmp.bi_tiempo_anio AS [Año],
+		marc.bi_marca_descripcion AS Marca,
+		AVG(hecho.bi_publicacion_stock) AS [promedio de stock inicial]
+	FROM TESLA.BI_HECHO_PUBLICACION hecho
+	JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_publicacion_tiempo
+	JOIN TESLA.BI_MARCA marc ON marc.bi_marca_id = hecho.bi_publicacion_marca
+
+	GROUP BY tmp.bi_tiempo_anio, marc.bi_marca_descripcion
 GO
 
 
 -- 3
-CREATE VIEW TESLA.VW_PORCENTAJE_ANUAL_VENTAS AS
-	SELECT 
-		bi_rang_nombre,
-		bi_tipo_caja_nombre,
-		t1.bi_tiem_cuatrimestre,
-        t1.bi_tiem_anio,
-		( ( SUM(bi_vent_cantidad) ) / (	SELECT SUM(v2.bi_vent_cantidad) 
-										FROM TESLA.BI_VENTA v2
-										LEFT JOIN TESLA.BI_TIEMPO t2
-											ON t2.bi_tiem_codigo = v2.bi_vent_tiempo
-										WHERE t2.bi_tiem_anio = t1.bi_tiem_anio	) ) as porcentaje_anual_ventas
-		
-	FROM TESLA.BI_VENTA v1
-	LEFT JOIN TESLA.BI_RANGO_ETARIO
-		ON bi_rang_codigo = v1.bi_vent_rango_etario_empl
-	LEFT JOIN TESLA.BI_TIPO_CAJA
-		ON bi_tipo_caja_codigo = v1.bi_vent_tipo_caja
-	LEFT JOIN TESLA.BI_TIEMPO t1
-		ON t1.bi_tiem_codigo = v1.bi_vent_tiempo
-        
-    GROUP BY bi_rang_nombre,bi_tipo_caja_nombre,t1.bi_tiem_cuatrimestre,t1.bi_tiem_anio
+CREATE VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL AS
+	SELECT
+		tmp.bi_tiempo_anio as [Año],
+		tmp.bi_tiempo_mes as Mes,
+		ubic.bi_ubic_provincia as Provincia,
+		AVG(hecho.bi_evento_provincia_almacen_importe_venta) as [promedio de importe en ventas mensual]
+	FROM TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN hecho
+	JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_evento_provincia_almacen_tiempo
+	JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_evento_provincia_almacen_ubicacion
+	GROUP BY tmp.bi_tiempo_anio,tmp.bi_tiempo_mes,ubic.bi_ubic_provincia
 GO
+
+
 
 -- 4
 CREATE VIEW TESLA.VW_CANTIDAD_VENTAS_X_TURNO AS
@@ -1016,7 +951,7 @@ CREATE VIEW TESLA.VW_CANTIDAD_VENTAS_X_TURNO AS
 		
     GROUP BY bi_ubic_localidad, bi_tiem_anio, bi_tiem_mes,bi_turno_rango
 GO
-
+/*
 
 -- 5
 CREATE VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO AS
