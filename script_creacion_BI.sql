@@ -22,7 +22,6 @@ IF OBJECT_ID('TESLA.BI_HECHO_PUBLICACION','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_PUBLICACION;
 
 --DROPS TABLAS DIMENSIONES
-
 IF OBJECT_ID('TESLA.BI_CONCEPTO_FACTURA','U') IS NOT NULL
     DROP TABLE TESLA.BI_CONCEPTO_FACTURA;
 
@@ -310,7 +309,6 @@ GO
 -- Dado un mes devuelve cuatrimestre
 CREATE FUNCTION TESLA.OBTENER_CUATRIMESTRE(@mes DECIMAL(2,0)) RETURNS DECIMAL(1,0) AS
 BEGIN
-
 	RETURN CASE
 		WHEN @mes BETWEEN 1 AND 4 THEN 1
 		WHEN @mes BETWEEN 5 AND 8 THEN 2
@@ -363,7 +361,6 @@ BEGIN
 END
 GO
 
--- TODO VER FUNCIONES
 
 --Dado un subrubro y un rubro devuelve un id_subrubro
 create FUNCTION TESLA.OBTENER_ID_SUBRUBRO(@subrubro varchar(50), @rubro varchar(50)) RETURNS DECIMAL(18,0) AS
@@ -446,7 +443,7 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -----------------------------------------------------(4)MIGRACIONES DIMENSIONES--------------------------------------------------------------------------------------------------------------------------------------
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-GO
+
 --DIMENSION TIEMPO
 CREATE PROCEDURE TESLA.bi_migrar_tiempo AS
 BEGIN
@@ -528,7 +525,7 @@ BEGIN
           WHERE bt.bi_tiempo_anio = YEAR(env_fecha_entrega)
             AND bt.bi_tiempo_mes = MONTH(env_fecha_entrega)
             AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(env_fecha_entrega))
-      );
+    );
 
     -- Insertar desde TESLA.PAGO
     INSERT INTO TESLA.BI_TIEMPO (bi_tiempo_anio, bi_tiempo_mes, bi_tiempo_cuatrimestre)
@@ -538,15 +535,15 @@ BEGIN
         TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
     FROM TESLA.PAGO
     WHERE pago_fecha IS NOT NULL
-      AND NOT EXISTS (
-          SELECT 1
-          FROM TESLA.BI_TIEMPO bt
-          WHERE bt.bi_tiempo_anio = YEAR(pago_fecha)
+    AND NOT EXISTS (
+        SELECT 1
+        FROM TESLA.BI_TIEMPO bt
+        WHERE bt.bi_tiempo_anio = YEAR(pago_fecha)
             AND bt.bi_tiempo_mes = MONTH(pago_fecha)
             AND bt.bi_tiempo_cuatrimestre = TESLA.OBTENER_CUATRIMESTRE(MONTH(pago_fecha))
-      );
+    );
 
-	  PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIEMPO')
+	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIEMPO')
 END
 GO
 
@@ -577,7 +574,6 @@ BEGIN
 END
 GO
 
-
 --DIMENSION RANGO HORARIO VENTAS
 CREATE PROCEDURE TESLA.bi_migrar_rango_horario_ventas AS
 BEGIN
@@ -603,13 +599,12 @@ BEGIN
 END
 GO
 
-
 --DIMENSION TIPO ENVIO
 CREATE PROCEDURE TESLA.bi_migrar_tipo_envio AS
 BEGIN
     INSERT INTO TESLA.BI_TIPO_ENVIO(bi_tipo_envio_descripcion)
     SELECT 
-         tipo_envio_descripcion
+        tipo_envio_descripcion
     FROM TESLA.TIPO_ENVIO
     
 	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION TIPO_ENVIO')
@@ -641,7 +636,6 @@ BEGIN
 	PRINT('SE FINALIZA LA MIGRACION DE LA DIMENSION MARCA')
 END
 GO
-
 
 --DIMENSION CONCEPTO FACTURA
 CREATE PROCEDURE TESLA.bi_migrar_concepto_factura AS
@@ -685,11 +679,11 @@ BEGIN
 											bi_publicacion_promedio_vigencia
 											)
     SELECT 
-		 TESLA.OBTENER_ID_TIEMPO(YEAR(p.publi_fecha_inicio), MONTH(publi_fecha_inicio)),
-		 TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
-		 TESLA.OBTENER_ID_MARCA(m.marca_descripcion),
-		 AVG(p.publi_stock),
-		 AVG(TESLA.DIFERENCIA_EN_DIAS(p.publi_fecha_inicio, p.publi_fecha_fin))
+		TESLA.OBTENER_ID_TIEMPO(YEAR(p.publi_fecha_inicio), MONTH(publi_fecha_inicio)),
+		TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
+		TESLA.OBTENER_ID_MARCA(m.marca_descripcion),
+		AVG(p.publi_stock),
+		AVG(TESLA.DIFERENCIA_EN_DIAS(p.publi_fecha_inicio, p.publi_fecha_fin))
 		
     FROM TESLA.PUBLICACION p
 	join TESLA.PRODUCTO pr on p.publi_producto = pr.prod_id
@@ -698,11 +692,10 @@ BEGIN
 	join TESLA.RUBRO r on sr.sub_rubr_rubro = r.rubr_id
 
 	group by YEAR(publi_fecha_inicio), MONTH(publi_fecha_inicio), m.marca_descripcion,sr.sub_rubr_descripcion, r.rubr_descripcion
-   
+
     PRINT('SE FINALIZA LA MIGRACION DE PUBLICACION_STOCK')
 END
 GO
-
 
 --- MIGRAR EVENTO LOC CLIENTE
 CREATE PROCEDURE TESLA.bi_migrar_evento_loc_cliente AS
@@ -740,10 +733,7 @@ BEGIN
     JOIN TESLA.DOMICILIO d ON us.usr_id = d.domi_id
     JOIN TESLA.LOCALIDAD l ON d.domi_localidad = l.loc_id
     JOIN TESLA.PROVINCIA pv ON l.loc_provincia = pv.prov_id
-
 	JOIN ENVIO e on e.env_venta = v.vent_id
-
-
     JOIN TESLA.DETALLE_VENTA dv ON dv.det_vent_venta = v.vent_id
     JOIN TESLA.PUBLICACION p ON p.publi_id = dv.det_vent_publicacion
     JOIN TESLA.PRODUCTO pr ON p.publi_producto = pr.prod_id
@@ -774,12 +764,11 @@ BEGIN
 														bi_evento_provincia_almacen_envios_cumplidos, 
 														bi_evento_provincia_almacen_envios_no_cumplidos)
     SELECT 
-       TESLA.OBTENER_ID_TIEMPO(YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada)),
+        TESLA.OBTENER_ID_TIEMPO(YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada)),
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
         AVG(v.vent_total),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END),
-		COUNT(*)
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
 
 		from TESLA.ENVIO e
 		JOIN TESLA.VENTA v on e.env_venta = v.vent_id
@@ -789,19 +778,15 @@ BEGIN
 		join TESLA.DOMICILIO d on a.alm_id = d.domi_almacen
 		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
 		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
-		
-		WHERE YEAR(env_fecha_programada) = 2026 and MONTH(env_fecha_programada) = 5
-and pv.prov_nombre = 'Santa Fe'
+
 		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
 		l.loc_nombre, pv.prov_nombre
 
-
 		PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_PROVINCIA_ALMACEN')
- END
+END
 GO
 
 ---- MIGRACION PAGO
-
 CREATE PROCEDURE TESLA.bi_migrar_pago AS
 BEGIN
     INSERT INTO TESLA.BI_HECHO_PAGO(bi_pago_tipo_medio_de_pago,
@@ -831,9 +816,7 @@ BEGIN
 END
 GO
 
-
 ---- MIGRACION FACTURACION
-
 CREATE PROCEDURE TESLA.bi_migrar_facturacion AS
 BEGIN
     INSERT INTO TESLA.BI_HECHO_FACTURACION(bi_facturacion_tiempo, bi_facturacion_ubicacion, bi_facturacion_concepto, bi_facturacion_total)
@@ -868,7 +851,6 @@ EXEC TESLA.bi_migrar_evento_loc_cliente;
 EXEC TESLA.bi_migrar_evento_prov_almacen;
 EXEC TESLA.bi_migrar_pago;
 EXEC TESLA.bi_migrar_facturacion;
-
 GO
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
@@ -876,7 +858,6 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 -- 1
-
 CREATE VIEW TESLA.VW_PROMEDIO_TIEMPO_PUBLICACIONES AS
 	SELECT
 		tmp.bi_tiempo_anio AS [año],
@@ -891,7 +872,6 @@ CREATE VIEW TESLA.VW_PROMEDIO_TIEMPO_PUBLICACIONES AS
 	GROUP BY tmp.bi_tiempo_anio, tmp.bi_tiempo_cuatrimestre, subr.bi_subr_rubro_descripcion,subr.bi_subr_descripcion
 GO
 
-
 -- 2
 CREATE VIEW TESLA.VW_PROMEDIO_STOCK_INICIAL AS
 	SELECT
@@ -904,7 +884,6 @@ CREATE VIEW TESLA.VW_PROMEDIO_STOCK_INICIAL AS
 
 	GROUP BY tmp.bi_tiempo_anio, marc.bi_marca_descripcion
 GO
-
 
 -- 3
 CREATE VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL AS
@@ -919,8 +898,6 @@ CREATE VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL AS
 	GROUP BY tmp.bi_tiempo_anio,tmp.bi_tiempo_mes,ubic.bi_ubic_provincia
 GO
 
-
---TODO: VER SI ES POR CANTIDADES O IMPORTE
 -- 4
 CREATE VIEW TESLA.VW_MEJORES_CINCO_RUBROS AS
     SELECT 
@@ -964,10 +941,9 @@ FROM (
         subr.bi_subr_rubro_descripcion
 ) AS RubrosRankeados
 WHERE RankRubro <= 5
-
 GO
 
-
+--5
 -- DESESTIMAMOS VISTA 5 POR RESPUESTAS EN EL FORO DE GOOGLE
 
 -- 6
@@ -1007,11 +983,8 @@ FROM (
         ubic.bi_ubic_localidad
 ) AS LocalidadesRankeadas
 WHERE RankLocalidad <= 3
-
 GO
 
-
--- TODO: VER MIGRACION, VER FUNCION DE CUMPLIMIENTO DE ENVIOS
 -- 7
 CREATE VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS AS
     SELECT
@@ -1038,7 +1011,6 @@ CREATE VIEW TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO AS
 
 	GROUP BY ubic.bi_ubic_provincia
 	ORDER BY 2 desc
-       
 GO
 
 -- 9
@@ -1075,4 +1047,3 @@ CREATE VIEW TESLA.VW_FACTURACION_X_PROVINCIA AS
 
 	group by ti.bi_tiempo_cuatrimestre, ti.bi_tiempo_anio, ub.bi_ubic_provincia
 GO
-
