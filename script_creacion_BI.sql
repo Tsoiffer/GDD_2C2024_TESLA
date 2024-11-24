@@ -156,37 +156,22 @@ IF OBJECT_ID('TESLA.VW_VENTA_PROMEDIO_MENSUAL') IS NOT NULL
  DROP VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL
  GO
 
-/* TODO VIWS
-IF OBJECT_ID('TESLA.VW_TICKET_PROMEDIO_MENSUAL') IS NOT NULL
-  DROP VIEW TESLA.VW_TICKET_PROMEDIO_MENSUAL;
-  
-IF OBJECT_ID('TESLA.VW_CANTIDAD_UNIDADES_PROMEDIO') IS NOT NULL
-  DROP VIEW TESLA.VW_CANTIDAD_UNIDADES_PROMEDIO;
+IF OBJECT_ID('TESLA.VW_MEJORES_CINCO_RUBROS') IS NOT NULL
+ DROP VIEW TESLA.VW_MEJORES_CINCO_RUBROS
+ GO
 
-IF OBJECT_ID('TESLA.VW_PORCENTAJE_ANUAL_VENTAS') IS NOT NULL
-  DROP VIEW TESLA.VW_PORCENTAJE_ANUAL_VENTAS;
-
-IF OBJECT_ID('TESLA.VW_CANTIDAD_VENTAS_X_TURNO') IS NOT NULL
-  DROP VIEW TESLA.VW_CANTIDAD_VENTAS_X_TURNO;
-
-IF OBJECT_ID('TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO') IS NOT NULL
-  DROP VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO;
-
-IF OBJECT_ID('TESLA.VW_PRODUCTOS_MAYOR_DESCUENTO_APLICADO') IS NOT NULL
-  DROP VIEW TESLA.VW_PRODUCTOS_MAYOR_DESCUENTO_APLICADO;
+IF OBJECT_ID('TESLA.VW_MEJORES_TRES_LOCALIDADES') IS NOT NULL
+ DROP VIEW TESLA.VW_MEJORES_TRES_LOCALIDADES
+ GO
 
 IF OBJECT_ID('TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS') IS NOT NULL
-  DROP VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS;
+ DROP VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS
+ GO
 
-IF OBJECT_ID('TESLA.VW_CANTIDAD_DE_ENVIOS_POR_RANGO_ETARIO_DE_CLIENTES') IS NOT NULL
-  DROP VIEW TESLA.VW_CANTIDAD_DE_ENVIOS_POR_RANGO_ETARIO_DE_CLIENTES;
+IF OBJECT_ID('TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO') IS NOT NULL
+ DROP VIEW TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO
+ GO
 
-IF OBJECT_ID('TESLA.VW_LOCALIDADES_MAYOR_COSTO_ENVIO') IS NOT NULL
-  DROP VIEW TESLA.VW_LOCALIDADES_MAYOR_COSTO_ENVIO;
-
-IF OBJECT_ID('TESLA.VW_SUCURSALES_MAYOR_IMPORTE_EN_CUOTAS') IS NOT NULL
-  DROP VIEW TESLA.VW_SUCURSALES_MAYOR_IMPORTE_EN_CUOTAS;
-*/
 IF OBJECT_ID('TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO') IS NOT NULL
   DROP VIEW TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO;
 
@@ -793,7 +778,8 @@ BEGIN
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
         AVG(v.vent_total),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
-        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
+        SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END),
+		COUNT(*)
 
 		from TESLA.ENVIO e
 		JOIN TESLA.VENTA v on e.env_venta = v.vent_id
@@ -803,9 +789,12 @@ BEGIN
 		join TESLA.DOMICILIO d on a.alm_id = d.domi_almacen
 		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
 		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
-
+		
+		WHERE YEAR(env_fecha_programada) = 2026 and MONTH(env_fecha_programada) = 5
+and pv.prov_nombre = 'Santa Fe'
 		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
 		l.loc_nombre, pv.prov_nombre
+
 
 		PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_PROVINCIA_ALMACEN')
  END
@@ -834,10 +823,10 @@ BEGIN
 		join TESLA.DOMICILIO d on e.env_domicilio = d.domi_id
 		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
 		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
-
+		
+		where p.pago_cuotas > 1
 		group by tmp.tipo_medio_de_pago_descripcion, YEAR(p.pago_fecha), MONTH(p.pago_fecha), 
 				l.loc_nombre, pv.prov_nombre
-
 		PRINT('SE FINALIZA LA MIGRACION DEL HECHO PAGO')
 END
 GO
@@ -931,95 +920,127 @@ CREATE VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL AS
 GO
 
 
-
+--TODO: VER SI ES POR CANTIDADES O IMPORTE
 -- 4
-CREATE VIEW TESLA.VW_CANTIDAD_VENTAS_X_TURNO AS
+CREATE VIEW TESLA.VW_MEJORES_CINCO_RUBROS AS
     SELECT 
-        bi_ubic_localidad AS Localidad,
-        bi_tiem_anio AS A�o,
-        bi_tiem_mes AS Mes,
-		bi_turno_rango,
-        COUNT(bi_vent_codigo) AS [Cantidad de ventas]
-		
-    FROM TESLA.BI_VENTA 
-    INNER JOIN TESLA.BI_UBICACION  
-        ON bi_vent_ubicacion = bi_ubic_codigo
-    INNER JOIN TESLA.BI_TIEMPO  
-        ON bi_vent_tiempo = bi_tiem_codigo
-	INNER JOIN TESLA.BI_TURNO
-		ON bi_turno_codigo = bi_vent_turno
-		
-    GROUP BY bi_ubic_localidad, bi_tiem_anio, bi_tiem_mes,bi_turno_rango
-GO
-/*
+    Cuatrimestre,
+    [Año],
+    [Localidad],
+    [Rango Etario],
+    [Rubro],
+    TotalVentas
+FROM (
+    SELECT 
+        tmp.bi_tiempo_cuatrimestre AS Cuatrimestre,
+        tmp.bi_tiempo_anio AS [Año],
+        ubic.bi_ubic_localidad AS [Localidad],
+        rec.bi_rango_etario_nombre AS [Rango Etario],
+        subr.bi_subr_rubro_descripcion AS [Rubro],
+        FORMAT(SUM(hecho.bi_evento_loc_cliente_importe_ventas), 'N2', 'es-ES') AS TotalVentas,
+        ROW_NUMBER() OVER (
+            PARTITION BY 
+                tmp.bi_tiempo_anio,
+                tmp.bi_tiempo_cuatrimestre,
+                ubic.bi_ubic_localidad,
+                rec.bi_rango_etario_nombre
+            ORDER BY 
+                SUM(hecho.bi_evento_loc_cliente_importe_ventas) DESC
+        ) AS RankRubro
+    FROM TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE hecho
+    JOIN TESLA.BI_TIEMPO tmp 
+        ON tmp.bi_tiempo_id = hecho.bi_evento_loc_cliente_tiempo
+    JOIN TESLA.BI_UBICACION ubic 
+        ON ubic.bi_ubic_id = hecho.bi_evento_loc_cliente_ubicacion
+    JOIN TESLA.BI_RANGO_ETARIO_CLIENTES rec 
+        ON rec.bi_rango_etario_id = hecho.bi_evento_loc_cliente_rango_etario
+    JOIN TESLA.BI_SUBRUBRO subr 
+        ON subr.bi_subr_id = hecho.bi_evento_loc_cliente_subRubro
+    GROUP BY 
+        tmp.bi_tiempo_anio,
+        tmp.bi_tiempo_cuatrimestre,
+        ubic.bi_ubic_localidad,
+        rec.bi_rango_etario_nombre,
+        subr.bi_subr_rubro_descripcion
+) AS RubrosRankeados
+WHERE RankRubro <= 5
 
--- 5
-CREATE VIEW TESLA.VW_PORCENTAJE_DESCUENTO_APLICADO AS
-    SELECT 
-		bi_tiem_anio AS A�o,
-		bi_tiem_mes AS Mes,
-		( ( SUM(bi_vent_descuento_promocion) ) / ( COUNT(bi_vent_codigo) ) ) as porcentaje_desc_aplicado
-		
-    FROM TESLA.BI_VENTA
-    INNER JOIN TESLA.BI_TIEMPO  
-        ON bi_vent_tiempo = bi_tiem_codigo
-	
-    GROUP BY bi_tiem_anio, bi_tiem_mes
 GO
+
+
+-- DESESTIMAMOS VISTA 5 POR RESPUESTAS EN EL FORO DE GOOGLE
 
 -- 6
-CREATE VIEW TESLA.VW_PRODUCTOS_MAYOR_DESCUENTO_APLICADO AS
-    SELECT TOP 3
-        bi_cate_detalle, 
-        bi_tiem_cuatrimestre, 
-        bi_tiem_anio, 
-        SUM(bi_veXpr_descuento_promocion) as descuento_aplicado
+CREATE VIEW TESLA.VW_MEJORES_TRES_LOCALIDADES AS
+    SELECT 
+    [Año],
+    Mes,
+    [Medio de Pago],
+    Localidad,
+    Importe
+FROM (
+    SELECT 
+        tmp.bi_tiempo_anio AS [Año],
+        tmp.bi_tiempo_mes AS Mes,
+        mdp.bi_tipo_medio_pago_descripcion AS [Medio de Pago],
+        ubic.bi_ubic_localidad AS Localidad,
+        FORMAT(SUM(hecho.bi_pago_importe), 'N2', 'es-ES') AS Importe,
+        ROW_NUMBER() OVER (
+            PARTITION BY 
+                tmp.bi_tiempo_anio,
+                tmp.bi_tiempo_mes,
+                mdp.bi_tipo_medio_pago_descripcion
+            ORDER BY 
+                SUM(hecho.bi_pago_importe) DESC
+        ) AS RankLocalidad
+    FROM TESLA.BI_HECHO_PAGO hecho
+    JOIN TESLA.BI_TIEMPO tmp 
+        ON tmp.bi_tiempo_id = hecho.bi_pago_tiempo
+    JOIN TESLA.BI_TIPO_MEDIO_DE_PAGO mdp 
+        ON mdp.bi_tipo_medio_pago_id = hecho.bi_pago_tipo_medio_de_pago
+    JOIN TESLA.BI_UBICACION ubic 
+        ON ubic.bi_ubic_id = hecho.bi_pago_ubicacion
+    GROUP BY 
+        tmp.bi_tiempo_anio,
+        tmp.bi_tiempo_mes,
+        mdp.bi_tipo_medio_pago_descripcion,
+        ubic.bi_ubic_localidad
+) AS LocalidadesRankeadas
+WHERE RankLocalidad <= 3
 
-    FROM TESLA.BI_VENTA_X_PRODUCTO 
-    INNER join TESLA.BI_TIEMPO  
-		ON bi_veXpr_tiempo = bi_tiem_codigo
-	INNER JOIN TESLA.BI_CATEGORIA
-		ON bi_veXpr_categoria = bi_cate_codigo
-
-    GROUP BY bi_cate_detalle, bi_tiem_cuatrimestre, bi_tiem_anio
-	
-    ORDER BY SUM(bi_veXpr_descuento_promocion) DESC
 GO
 
+
+-- TODO: VER MIGRACION, VER FUNCION DE CUMPLIMIENTO DE ENVIOS
 -- 7
 CREATE VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS AS
     SELECT
-        ( SUM(bi_envi_cumplidas) / ( SUM(bi_envi_cumplidas) + SUM(bi_envi_not_cumplidas) ) * 100 ) AS 'Porcentaje_Cumplimiento_Envio',
-        bi_tiem_anio AS 'A�o',
-        bi_tiem_mes AS 'Mes',
-        bi_sucu_numero AS 'Sucursal'
-
-    FROM TESLA.BI_ENVIO
-    INNER JOIN BI_TIEMPO 
-		ON bi_tiem_codigo = bi_envi_tiempo
-    INNER JOIN BI_SUCURSAL 
-		ON bi_sucu_numero = bi_envi_sucursal
-		
-    GROUP BY bi_tiem_anio, bi_tiem_mes, bi_sucu_numero
-GO 
+		tmp.bi_tiempo_anio as [Año],
+		tmp.bi_tiempo_mes as Mes,
+		ubic.bi_ubic_provincia as Provincia,
+		FORMAT(SUM(hecho.bi_evento_provincia_almacen_envios_cumplidos) *100
+		/
+		(SUM(hecho.bi_evento_provincia_almacen_envios_cumplidos) 
+		+ SUM(hecho.bi_evento_provincia_almacen_envios_no_cumplidos)), 'N2') + '%' as [Porcentaje Cumplimiento de Envios]
+        FROM TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN hecho
+		JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_evento_provincia_almacen_tiempo
+		JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_evento_provincia_almacen_ubicacion
+		GROUP BY tmp.bi_tiempo_anio, tmp.bi_tiempo_mes, ubic.bi_ubic_provincia
+GO
 
 -- 8 
-CREATE VIEW TESLA.VW_CANTIDAD_DE_ENVIOS_POR_RANGO_ETARIO_DE_CLIENTES AS 
-    SELECT 
-        COUNT(bi_envi_codigo) AS 'Cantidad_De_Envios',
-        bi_rang_nombre AS 'Rango_Etario',
-    	bi_tiem_cuatrimestre 'Cuatrimestre',
-        bi_tiem_anio 'A�o'
+CREATE VIEW TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO AS 
+    SELECT TOP 5
+	ubic.bi_ubic_provincia as Provincia,
+	AVG(hecho.bi_evento_loc_cliente_costo_envio) as [Promedio de Costo de Envio]
+	FROM TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE hecho
+	JOIN TESLA.BI_UBICACION ubic on ubic.bi_ubic_id = hecho.bi_evento_loc_cliente_ubicacion
 
-    FROM TESLA.BI_ENVIO
-    INNER JOIN BI_RANGO_ETARIO 
-        ON bi_envi_rango_etario_cl = bi_rang_codigo
-    INNER JOIN BI_TIEMPO 
-        ON bi_envi_tiempo = bi_tiem_codigo
-
-    GROUP BY bi_rang_nombre, bi_tiem_cuatrimestre, bi_tiem_anio
+	GROUP BY ubic.bi_ubic_provincia
+	ORDER BY 2 desc
+       
 GO
-*/
+
 -- 9
 CREATE VIEW TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO AS
 	SELECT
