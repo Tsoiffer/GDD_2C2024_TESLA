@@ -8,15 +8,15 @@ GO
 -- DROPS TABLAS HECHOS
 IF OBJECT_ID('TESLA.BI_HECHO_FACTURACION ','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_FACTURACION
-	
-IF OBJECT_ID('TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN','U') IS NOT NULL
-    DROP TABLE TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN;
+
+IF OBJECT_ID('TESLA.BI_HECHO_ENVIO ','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_ENVIO
 
 IF OBJECT_ID('TESLA.BI_HECHO_PAGO ','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_PAGO
 
-IF OBJECT_ID('TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE','U') IS NOT NULL
-    DROP TABLE TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE;
+IF OBJECT_ID('TESLA.BI_HECHO_VENTA ','U') IS NOT NULL
+    DROP TABLE TESLA.BI_HECHO_VENTA
 
 IF OBJECT_ID('TESLA.BI_HECHO_PUBLICACION','U') IS NOT NULL
     DROP TABLE TESLA.BI_HECHO_PUBLICACION;
@@ -125,12 +125,12 @@ IF OBJECT_ID('TESLA.bi_migrar_publicacion') IS NOT NULL
   DROP PROCEDURE TESLA.bi_migrar_publicacion;
 GO
 
-IF OBJECT_ID('TESLA.bi_migrar_evento_loc_cliente') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_evento_loc_cliente;
+IF OBJECT_ID('TESLA.bi_migrar_venta') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_venta;
 GO
 
-IF OBJECT_ID('TESLA.bi_migrar_evento_prov_almacen') IS NOT NULL
-  DROP PROCEDURE TESLA.bi_migrar_evento_prov_almacen;
+IF OBJECT_ID('TESLA.bi_migrar_envio') IS NOT NULL
+  DROP PROCEDURE TESLA.bi_migrar_envio;
 GO
 
 IF OBJECT_ID('TESLA.bi_migrar_pago') IS NOT NULL
@@ -167,12 +167,14 @@ IF OBJECT_ID('TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS') IS NOT NULL
  DROP VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS
  GO
 
+
 IF OBJECT_ID('TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO') IS NOT NULL
  DROP VIEW TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO
  GO
 
 IF OBJECT_ID('TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO') IS NOT NULL
   DROP VIEW TESLA.VW_PORCENTAJE_FACTURACION_X_CONCEPTO;
+ GO
 
 IF OBJECT_ID('TESLA.VW_FACTURACION_X_PROVINCIA') IS NOT NULL
   DROP VIEW TESLA.VW_FACTURACION_X_PROVINCIA;
@@ -251,18 +253,19 @@ CREATE TABLE TESLA.BI_HECHO_PUBLICACION (
 	FOREIGN KEY (bi_publicacion_marca) 		REFERENCES TESLA.BI_MARCA(bi_marca_id),
 );
 
-CREATE TABLE TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE (
-    bi_evento_loc_cliente_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_evento_loc_cliente_ubicacion DECIMAL(18, 0),
-    bi_evento_loc_cliente_tiempo DECIMAL(18, 0),
-    bi_evento_loc_cliente_rango_etario DECIMAL(18, 0),
-    bi_evento_loc_cliente_subRubro decimal(18,0),
-	bi_evento_loc_cliente_importe_ventas decimal(18,2),
-	bi_evento_loc_cliente_costo_envio decimal(18,2)
-    FOREIGN KEY (bi_evento_loc_cliente_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
-    FOREIGN KEY (bi_evento_loc_cliente_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
-    FOREIGN KEY (bi_evento_loc_cliente_rango_etario) 	REFERENCES TESLA.BI_RANGO_ETARIO_CLIENTES(bi_rango_etario_id),
-    FOREIGN KEY (bi_evento_loc_cliente_subRubro)		REFERENCES TESLA.BI_SUBRUBRO(bi_subr_id),
+CREATE TABLE TESLA.BI_HECHO_VENTA (
+    bi_venta_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_venta_ubicacion_almacen DECIMAL(18, 0),
+	bi_venta_ubicacion_cliente DECIMAL(18, 0),
+    bi_venta_tiempo DECIMAL(18, 0),
+    bi_venta_rango_etario DECIMAL(18, 0),
+    bi_venta_subRubro decimal(18,0),
+	bi_venta_importe decimal(18,2)
+    FOREIGN KEY (bi_venta_ubicacion_almacen) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_venta_ubicacion_cliente) 			REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+    FOREIGN KEY (bi_venta_tiempo) 						REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_venta_rango_etario) 				REFERENCES TESLA.BI_RANGO_ETARIO_CLIENTES(bi_rango_etario_id),
+    FOREIGN KEY (bi_venta_subRubro)						REFERENCES TESLA.BI_SUBRUBRO(bi_subr_id),
 );
 
 CREATE TABLE TESLA.BI_HECHO_PAGO (
@@ -277,16 +280,19 @@ CREATE TABLE TESLA.BI_HECHO_PAGO (
 );
 GO
 
-CREATE TABLE TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN (
-    bi_evento_provincia_almacen_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
-    bi_evento_provincia_almacen_tiempo DECIMAL(18, 0),
-    bi_evento_provincia_almacen_ubicacion DECIMAL(18, 0),
-    bi_evento_provincia_almacen_importe_venta DECIMAL(18, 2),
-    bi_evento_provincia_almacen_envios_cumplidos DECIMAL(18,0),
-	bi_evento_provincia_almacen_envios_no_cumplidos DECIMAL(18,0),
-    FOREIGN KEY (bi_evento_provincia_almacen_tiempo) 			REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
-    FOREIGN KEY (bi_evento_provincia_almacen_ubicacion) 		REFERENCES TESLA.BI_UBICACION(bi_ubic_id)
+CREATE TABLE TESLA.BI_HECHO_ENVIO (
+    bi_envio_id						DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
+    bi_envio_tiempo					DECIMAL(18, 0),
+    bi_envio_ubicacion_almacen		DECIMAL(18, 0),
+	bi_envio_ubicacion_cliente		DECIMAL(18,0),
+    bi_envio_envios_cumplidos		DECIMAL(18,0),
+	bi_envio_envios_no_cumplidos	DECIMAL(18,0),
+	bi_envio_costo					DECIMAL(18,2)
+    FOREIGN KEY (bi_envio_tiempo) 							REFERENCES TESLA.BI_TIEMPO(bi_tiempo_id),
+    FOREIGN KEY (bi_envio_ubicacion_almacen) 				REFERENCES TESLA.BI_UBICACION(bi_ubic_id),
+	FOREIGN KEY (bi_envio_ubicacion_cliente) 				REFERENCES TESLA.BI_UBICACION(bi_ubic_id)
 );
+
 
 CREATE TABLE TESLA.BI_HECHO_FACTURACION (
     bi_facturacion_id DECIMAL(18, 0) 			IDENTITY(1,1) PRIMARY KEY,
@@ -697,8 +703,8 @@ BEGIN
 END
 GO
 
---- MIGRAR EVENTO LOC CLIENTE
-CREATE PROCEDURE TESLA.bi_migrar_evento_loc_cliente AS
+--- MIGRAR VENTA
+CREATE PROCEDURE TESLA.bi_migrar_venta AS
 BEGIN
     -- Crear una tabla temporal con los clientes y sus rangos etarios
     CREATE TABLE #temp_clientes (
@@ -714,36 +720,44 @@ BEGIN
     FROM TESLA.CLIENTE;
 
     -- Consulta principal usando la tabla temporal
-    INSERT INTO TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE(bi_evento_loc_cliente_tiempo, 
-                                                        bi_evento_loc_cliente_ubicacion, 
-                                                        bi_evento_loc_cliente_subRubro, 
-                                                        bi_evento_loc_cliente_rango_etario, 
-                                                        bi_evento_loc_cliente_importe_ventas,
-                                                        bi_evento_loc_cliente_costo_envio)
+    INSERT INTO TESLA.BI_HECHO_VENTA(bi_venta_tiempo, 
+                                                        bi_venta_ubicacion_cliente,
+														bi_venta_ubicacion_almacen,
+                                                        bi_venta_subRubro, 
+                                                        bi_venta_rango_etario, 
+                                                        bi_venta_importe
+                                                      )
     SELECT 
         TESLA.OBTENER_ID_TIEMPO(YEAR(v.vent_fecha), MONTH(v.vent_fecha)),
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
+		TESLA.OBTENER_ID_UBICACION(l2.loc_nombre, pv2.prov_nombre),
         TESLA.OBTENER_ID_SUBRUBRO(sr.sub_rubr_descripcion, r.rubr_descripcion),
         tcl.rango_etario, 
-        SUM(v.vent_total),
-		AVG(e.env_costo)
+        SUM(v.vent_total)
     FROM TESLA.VENTA v
     JOIN #temp_clientes tcl ON v.vent_cliente = tcl.clien_id
     JOIN TESLA.USUARIO us ON tcl.clien_id = us.usr_cliente
     JOIN TESLA.DOMICILIO d ON us.usr_id = d.domi_id
     JOIN TESLA.LOCALIDAD l ON d.domi_localidad = l.loc_id
     JOIN TESLA.PROVINCIA pv ON l.loc_provincia = pv.prov_id
-	JOIN ENVIO e on e.env_venta = v.vent_id
+	JOIN TESLA.ENVIO e on e.env_venta = v.vent_id
     JOIN TESLA.DETALLE_VENTA dv ON dv.det_vent_venta = v.vent_id
     JOIN TESLA.PUBLICACION p ON p.publi_id = dv.det_vent_publicacion
     JOIN TESLA.PRODUCTO pr ON p.publi_producto = pr.prod_id
     JOIN TESLA.SUB_RUBRO sr ON pr.prod_sub_rubro = sr.sub_rubr_id
     JOIN TESLA.RUBRO r ON sr.sub_rubr_rubro = r.rubr_id
+
+	JOIN TESLA.ALMACEN a on p.publi_almacen = a.alm_id
+	join TESLA.DOMICILIO d2 on a.alm_id = d2.domi_almacen
+	join TESLA.LOCALIDAD l2 on d2.domi_localidad = l2.loc_id
+	join TESLA.PROVINCIA pv2 on l2.loc_provincia = pv2.prov_id
     GROUP BY 
         YEAR(v.vent_fecha), 
         MONTH(v.vent_fecha), 
         l.loc_nombre, 
         pv.prov_nombre,
+		l2.loc_nombre,
+		pv2.prov_nombre,
         r.rubr_descripcion, 
         sr.sub_rubr_descripcion, 
         tcl.rango_etario;
@@ -751,22 +765,24 @@ BEGIN
     -- Eliminar la tabla temporal
     DROP TABLE #temp_clientes;
 
-	PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_LOCALIDAD_CLIENTE')
-END;
+	PRINT('SE FINALIZA LA MIGRACION DEL HECHO VENTA')
+END
 GO
 
 --- MIGRAR ENVIO
-CREATE PROCEDURE TESLA.bi_migrar_evento_prov_almacen AS
+CREATE PROCEDURE TESLA.bi_migrar_envio AS
 BEGIN
-    INSERT INTO TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN(bi_evento_provincia_almacen_tiempo , 
-														bi_evento_provincia_almacen_ubicacion, 
-														bi_evento_provincia_almacen_importe_venta, 
-														bi_evento_provincia_almacen_envios_cumplidos, 
-														bi_evento_provincia_almacen_envios_no_cumplidos)
+    INSERT INTO TESLA.BI_HECHO_ENVIO(bi_envio_tiempo , 
+														bi_envio_ubicacion_almacen,
+														bi_envio_ubicacion_cliente,
+														bi_envio_costo, 
+														bi_envio_envios_cumplidos, 
+														bi_envio_envios_no_cumplidos)
     SELECT 
         TESLA.OBTENER_ID_TIEMPO(YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada)),
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
-        AVG(v.vent_total),
+		TESLA.OBTENER_ID_UBICACION(l2.loc_nombre, pv2.prov_nombre),
+        AVG(e.env_costo),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'CUMPLIO' THEN 1 ELSE 0 END),
         SUM(CASE WHEN TESLA.CUMPLIO_HORARIO(e.env_horario_fin, e.env_fecha_entrega) = 'NO CUMPLIO' THEN 1 ELSE 0 END)
 
@@ -779,10 +795,16 @@ BEGIN
 		join TESLA.LOCALIDAD l on d.domi_localidad = l.loc_id
 		join TESLA.PROVINCIA pv on l.loc_provincia = pv.prov_id
 
-		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
-		l.loc_nombre, pv.prov_nombre
+		JOIN TESLA.CLIENTE c ON v.vent_cliente = c.clien_id
+		JOIN TESLA.USUARIO us ON c.clien_id = us.usr_cliente
+		JOIN TESLA.DOMICILIO d2 ON us.usr_id = d2.domi_id
+		JOIN TESLA.LOCALIDAD l2 ON d2.domi_localidad = l2.loc_id
+		JOIN TESLA.PROVINCIA pv2 ON l2.loc_provincia = pv2.prov_id
 
-		PRINT('SE FINALIZA LA MIGRACION DEL HECHO EVENTO_PROVINCIA_ALMACEN')
+		group by YEAR(e.env_fecha_programada), MONTH(e.env_fecha_programada),
+		l.loc_nombre, pv.prov_nombre, l2.loc_nombre, pv2.prov_nombre
+
+		PRINT('SE FINALIZA LA MIGRACION DEL HECHO ENVIO')
 END
 GO
 
@@ -793,7 +815,7 @@ BEGIN
                                     bi_pago_tiempo,
                                     bi_pago_ubicacion,
                                     bi_pago_importe)
-    SELECT DISTINCT
+    SELECT
         (SELECT bimp.bi_tipo_medio_pago_id FROM TESLA.BI_TIPO_MEDIO_DE_PAGO bimp
 		where tmp.tipo_medio_de_pago_descripcion = bimp.bi_tipo_medio_pago_descripcion),
         TESLA.OBTENER_ID_TIEMPO(YEAR(p.pago_fecha), MONTH(p.pago_fecha)),
@@ -820,7 +842,7 @@ GO
 CREATE PROCEDURE TESLA.bi_migrar_facturacion AS
 BEGIN
     INSERT INTO TESLA.BI_HECHO_FACTURACION(bi_facturacion_tiempo, bi_facturacion_ubicacion, bi_facturacion_concepto, bi_facturacion_total)
-    SELECT DISTINCT
+    SELECT
         TESLA.OBTENER_ID_TIEMPO(YEAR(f.fact_fecha), MONTH(f.fact_fecha)),
         TESLA.OBTENER_ID_UBICACION(l.loc_nombre, pv.prov_nombre),
 		(SELECT bcf.bi_conc_id FROM TESLA.BI_CONCEPTO_FACTURA bcf
@@ -847,8 +869,8 @@ GO
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 EXEC TESLA.bi_migrar_publicacion;
-EXEC TESLA.bi_migrar_evento_loc_cliente;
-EXEC TESLA.bi_migrar_evento_prov_almacen;
+EXEC TESLA.bi_migrar_venta;
+EXEC TESLA.bi_migrar_envio;
 EXEC TESLA.bi_migrar_pago;
 EXEC TESLA.bi_migrar_facturacion;
 GO
@@ -891,13 +913,12 @@ CREATE VIEW TESLA.VW_VENTA_PROMEDIO_MENSUAL AS
 		tmp.bi_tiempo_anio as [Año],
 		tmp.bi_tiempo_mes as Mes,
 		ubic.bi_ubic_provincia as Provincia,
-		AVG(hecho.bi_evento_provincia_almacen_importe_venta) as [promedio de importe en ventas mensual]
-	FROM TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN hecho
-	JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_evento_provincia_almacen_tiempo
-	JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_evento_provincia_almacen_ubicacion
+		AVG(hecho.bi_venta_importe) as [promedio de importe en ventas mensual]
+	FROM TESLA.BI_HECHO_VENTA hecho
+	JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_venta_tiempo
+	JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_venta_ubicacion_almacen
 	GROUP BY tmp.bi_tiempo_anio,tmp.bi_tiempo_mes,ubic.bi_ubic_provincia
 GO
-
 -- 4
 CREATE VIEW TESLA.VW_MEJORES_CINCO_RUBROS AS
     SELECT 
@@ -914,7 +935,7 @@ FROM (
         ubic.bi_ubic_localidad AS [Localidad],
         rec.bi_rango_etario_nombre AS [Rango Etario],
         subr.bi_subr_rubro_descripcion AS [Rubro],
-        FORMAT(SUM(hecho.bi_evento_loc_cliente_importe_ventas), 'N2', 'es-ES') AS TotalVentas,
+        FORMAT(SUM(hecho.bi_venta_importe), 'N2', 'es-ES') AS TotalVentas,
         ROW_NUMBER() OVER (
             PARTITION BY 
                 tmp.bi_tiempo_anio,
@@ -922,17 +943,17 @@ FROM (
                 ubic.bi_ubic_localidad,
                 rec.bi_rango_etario_nombre
             ORDER BY 
-                SUM(hecho.bi_evento_loc_cliente_importe_ventas) DESC
+                SUM(hecho.bi_venta_importe) DESC
         ) AS RankRubro
-    FROM TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE hecho
+    FROM TESLA.BI_HECHO_VENTA hecho
     JOIN TESLA.BI_TIEMPO tmp 
-        ON tmp.bi_tiempo_id = hecho.bi_evento_loc_cliente_tiempo
+        ON tmp.bi_tiempo_id = hecho.bi_venta_tiempo
     JOIN TESLA.BI_UBICACION ubic 
-        ON ubic.bi_ubic_id = hecho.bi_evento_loc_cliente_ubicacion
+        ON ubic.bi_ubic_id = hecho.bi_venta_ubicacion_cliente
     JOIN TESLA.BI_RANGO_ETARIO_CLIENTES rec 
-        ON rec.bi_rango_etario_id = hecho.bi_evento_loc_cliente_rango_etario
+        ON rec.bi_rango_etario_id = hecho.bi_venta_rango_etario
     JOIN TESLA.BI_SUBRUBRO subr 
-        ON subr.bi_subr_id = hecho.bi_evento_loc_cliente_subRubro
+        ON subr.bi_subr_id = hecho.bi_venta_subRubro
     GROUP BY 
         tmp.bi_tiempo_anio,
         tmp.bi_tiempo_cuatrimestre,
@@ -991,25 +1012,26 @@ CREATE VIEW TESLA.VW_PORCENTAJE_DE_CUMPLIMIENTO_DE_ENVIOS AS
 		tmp.bi_tiempo_anio as [Año],
 		tmp.bi_tiempo_mes as Mes,
 		ubic.bi_ubic_provincia as Provincia,
-		FORMAT(SUM(hecho.bi_evento_provincia_almacen_envios_cumplidos) *100
+		FORMAT(SUM(hecho.bi_envio_envios_cumplidos) *100
 		/
-		(SUM(hecho.bi_evento_provincia_almacen_envios_cumplidos) 
-		+ SUM(hecho.bi_evento_provincia_almacen_envios_no_cumplidos)), 'N2') + '%' as [Porcentaje Cumplimiento de Envios]
-        FROM TESLA.BI_HECHO_EVENTO_PROVINCIA_ALMACEN hecho
-		JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_evento_provincia_almacen_tiempo
-		JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_evento_provincia_almacen_ubicacion
+		(SUM(hecho.bi_envio_envios_cumplidos) 
+		+ SUM(hecho.bi_envio_envios_no_cumplidos)), 'N2') + '%' as [Porcentaje Cumplimiento de Envios]
+        FROM TESLA.BI_HECHO_ENVIO hecho
+		JOIN TESLA.BI_TIEMPO tmp ON tmp.bi_tiempo_id = hecho.bi_envio_tiempo
+		JOIN TESLA.BI_UBICACION ubic ON ubic.bi_ubic_id = hecho.bi_envio_ubicacion_almacen
 		GROUP BY tmp.bi_tiempo_anio, tmp.bi_tiempo_mes, ubic.bi_ubic_provincia
 GO
+
 
 -- 8 
 CREATE VIEW TESLA.VW_CINCO_LOCALIDADES_MAYOR_COSTO_ENVIO AS 
     SELECT TOP 5
-	ubic.bi_ubic_provincia as Provincia,
-	AVG(hecho.bi_evento_loc_cliente_costo_envio) as [Promedio de Costo de Envio]
-	FROM TESLA.BI_HECHO_EVENTO_LOCALIDAD_CLIENTE hecho
-	JOIN TESLA.BI_UBICACION ubic on ubic.bi_ubic_id = hecho.bi_evento_loc_cliente_ubicacion
+	ubic.bi_ubic_localidad as Provincia,
+	AVG(hecho.bi_envio_costo) as [Promedio de Costo de Envio]
+	FROM TESLA.BI_HECHO_ENVIO hecho
+	JOIN TESLA.BI_UBICACION ubic on ubic.bi_ubic_id = hecho.bi_envio_ubicacion_cliente
 
-	GROUP BY ubic.bi_ubic_provincia
+	GROUP BY ubic.bi_ubic_localidad
 	ORDER BY 2 desc
 GO
 
